@@ -1,6 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { LayoutDashboard, Calendar, Users, Home, MoreHorizontal } from "lucide-react";
-import { useNotifications } from "@/hooks/useNotifications";
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -14,7 +13,6 @@ const BottomNav = () => {
   const location = useNavigate();
   const navigate  = useNavigate();
   const loc       = useLocation();
-  const { unreadCount } = useNotifications();
 
   return (
     <nav
@@ -51,11 +49,6 @@ const BottomNav = () => {
                     strokeWidth: active ? 2.5 : 1.8,
                   }}
                 />
-                {item.label === "Dashboard" && unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-white text-[8px] font-extrabold rounded-full flex items-center justify-center">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
               </div>
 
               {/* Label */}

@@ -22,6 +22,7 @@ interface Client {
   total_bookings?: number; last_booking_date?: string|null;
   business_user_id: string; created_at: string; updated_at: string;
   totalSpend?: number;
+  avatar_url?: string | null;
   customer_profile_id?: string;
   customer_user_id?: string;
   latest_completed_booking_id?: string;
@@ -65,10 +66,15 @@ const ClientSheet = ({
         {/* Header */}
         <div className="flex items-center justify-between px-5 pt-2 pb-4 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-extrabold text-white"
-              style={{ background: gradientFor(client.name), boxShadow: "var(--shadow-raised)" }}>
-              {initials}
-            </div>
+            {client.avatar_url
+              ? <img src={client.avatar_url} alt={client.name}
+                  className="w-14 h-14 rounded-full object-cover flex-shrink-0"
+                  style={{ boxShadow: "var(--shadow-raised)" }} />
+              : <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-extrabold text-white flex-shrink-0"
+                  style={{ background: gradientFor(client.name), boxShadow: "var(--shadow-raised)" }}>
+                  {initials}
+                </div>
+            }
             <div>
               <h2 className="text-lg font-extrabold text-foreground">{client.name}</h2>
               <p className="text-xs text-muted-foreground">
@@ -112,11 +118,28 @@ const ClientSheet = ({
           <div className="rounded-3xl p-4 space-y-3"
             style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}>
             <p className="text-[11px] font-extrabold text-muted-foreground uppercase tracking-wider">Contact</p>
+            {/* In-app message — only for clients with a completed booking */}
+            {client.latest_completed_booking_id && client.customer_user_id && (
+              <button onClick={() => { onClose(); onChat(client); }} className="w-full flex items-center gap-3 tap-scale">
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
+                  <MessageSquare className="w-4 h-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Message</p>
+                  <p className="text-sm font-semibold text-foreground">Chat in-app</p>
+                </div>
+                <span className="text-xs font-bold text-primary px-2.5 py-1.5 rounded-xl tap-scale"
+                  style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
+                  Open
+                </span>
+              </button>
+            )}
             {client.email && (
               <a href={`mailto:${client.email}`} className="flex items-center gap-3 tap-scale">
                 <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
                   style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
-                  <Mail className="w-4 h-4 text-primary" />
+                  <Mail className="w-4 h-4 text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] text-muted-foreground uppercase font-bold">Email</p>
@@ -162,14 +185,6 @@ const ClientSheet = ({
         {/* Action buttons */}
         <div className="px-5 pt-3 space-y-2"
           style={{ borderTop: "1px solid hsl(var(--border))", paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)", background: "hsl(var(--background))" }}>
-          {/* Message button — only for clients with completed bookings */}
-          {client.latest_completed_booking_id && client.customer_user_id && (
-            <button onClick={() => { onClose(); onChat(client); }}
-              className="w-full h-[52px] rounded-3xl text-white font-extrabold text-sm flex items-center justify-center gap-2 tap-scale"
-              style={{ background: "linear-gradient(145deg, hsl(220 80% 16%), hsl(220 100% 8%))", boxShadow: "var(--shadow-navy)" }}>
-              <MessageSquare className="w-5 h-5" /> Message {client.name.split(" ")[0]}
-            </button>
-          )}
           {client.phone && (
             <a href={`tel:${client.phone}`}
               className="w-full h-[52px] rounded-3xl font-extrabold text-sm flex items-center justify-center gap-2 tap-scale"
@@ -199,10 +214,15 @@ const ClientCard = ({
       style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}>
       <button onClick={onTap} className="flex items-center gap-3 flex-1 min-w-0 text-left">
         <div className="relative flex-shrink-0">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
-            style={{ background: gradientFor(client.name), boxShadow: "var(--shadow-flat)" }}>
-            {initials}
-          </div>
+          {client.avatar_url
+            ? <img src={client.avatar_url} alt={client.name}
+                className="w-12 h-12 rounded-full object-cover"
+                style={{ boxShadow: "var(--shadow-flat)" }} />
+            : <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-extrabold text-white"
+                style={{ background: gradientFor(client.name), boxShadow: "var(--shadow-flat)" }}>
+                {initials}
+              </div>
+          }
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-extrabold text-white"
               style={{ background: "#22c55e" }}>
@@ -279,13 +299,13 @@ const ClientsPage = () => {
         .eq("provider_id", prof.id);
       if (!bks) { setLoading(false); return; }
 
-      // Also fetch customer user_ids via profiles
+      // Also fetch customer user_ids + avatars via profiles
       const customerProfileIds = [...new Set(bks.map(b => b.customer_id).filter(Boolean))];
-      let profileMap: Record<string, string> = {};
+      let profileMap: Record<string, { user_id: string; avatar_url: string | null }> = {};
       if (customerProfileIds.length > 0) {
         const { data: profs } = await supabase
-          .from("profiles").select("id,user_id").in("id", customerProfileIds);
-        if (profs) profs.forEach((p: any) => { profileMap[p.id] = p.user_id; });
+          .from("profiles").select("id,user_id,avatar_url").in("id", customerProfileIds);
+        if (profs) profs.forEach((p: any) => { profileMap[p.id] = { user_id: p.user_id, avatar_url: p.avatar_url || null }; });
       }
 
       const seen = new Set<string>();
@@ -296,7 +316,7 @@ const ClientsPage = () => {
           const last = same.map(x => x.booking_date).sort().reverse()[0] || null;
           const totalSpend = same.reduce((s, x) => s + (x.total_price || 0), 0);
           const latestCompleted = same.filter(x => x.status === "completed").sort((a, b) => b.booking_date?.localeCompare(a.booking_date || "") || 0)[0];
-          const customerUserId = b.customer_id ? profileMap[b.customer_id] : undefined;
+          const prof = b.customer_id ? profileMap[b.customer_id] : undefined;
           return {
             id: b.customer_id || b.customer_name,
             business_user_id: user.id,
@@ -308,8 +328,9 @@ const ClientsPage = () => {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             totalSpend,
+            avatar_url: prof?.avatar_url ?? null,
             customer_profile_id: b.customer_id || undefined,
-            customer_user_id: customerUserId,
+            customer_user_id: prof?.user_id,
             latest_completed_booking_id: latestCompleted?.id,
           } as Client;
         });
@@ -413,6 +434,7 @@ const ClientsPage = () => {
           currentUserId={user.id}
           currentRole="provider"
           otherName={chatClient.name}
+          otherAvatar={chatClient.avatar_url ?? null}
           onClose={() => {
             setChatOpen(false);
             setChatClient(null);

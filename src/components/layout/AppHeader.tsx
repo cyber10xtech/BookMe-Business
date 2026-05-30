@@ -1,6 +1,6 @@
 import { Menu, MessageSquare, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import logo from "@/assets/logo.jpg";
@@ -11,6 +11,23 @@ const AppHeader = ({ onMenuOpen }: AppHeaderProps) => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [bellSwing, setBellSwing] = useState(false);
+  const swingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Periodic bell swing when there are unread notifications
+  useEffect(() => {
+    if (swingTimerRef.current) clearInterval(swingTimerRef.current);
+    if (unreadCount > 0) {
+      setBellSwing(true);
+      swingTimerRef.current = setInterval(() => {
+        setBellSwing(false);
+        setTimeout(() => setBellSwing(true), 100);
+      }, 3500);
+    } else {
+      setBellSwing(false);
+    }
+    return () => { if (swingTimerRef.current) clearInterval(swingTimerRef.current); };
+  }, [unreadCount]);
 
   useEffect(() => {
     if (!user) return;
@@ -75,10 +92,15 @@ const AppHeader = ({ onMenuOpen }: AppHeaderProps) => {
             className="w-10 h-10 rounded-2xl flex items-center justify-center tap-scale relative"
             style={{ boxShadow: "var(--shadow-raised)", background: "hsl(var(--card))" }}
           >
-            <Bell className="w-[18px] h-[18px] text-foreground" strokeWidth={2} />
+            <Bell
+              className={`w-[18px] h-[18px] text-foreground${bellSwing ? " animate-bell-swing" : ""}`}
+              strokeWidth={2}
+              style={{ transformOrigin: "top center" }}
+            />
             {unreadCount > 0 && (
               <span
-                className="absolute -top-0.5 -right-0.5 w-[18px] h-[18px] bg-destructive text-white text-[9px] font-extrabold rounded-full flex items-center justify-center animate-pulse-ring"
+                className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-destructive text-white text-[9px] font-extrabold rounded-full flex items-center justify-center"
+                style={{ boxShadow: "0 0 0 2px hsl(var(--card)), 0 0 8px hsl(var(--destructive) / 0.6)" }}
               >
                 {unreadCount > 9 ? "9+" : unreadCount}
               </span>

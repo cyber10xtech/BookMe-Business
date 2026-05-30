@@ -1,7 +1,8 @@
-import { Bell, CheckCheck, Trash2 } from "lucide-react";
+import { Bell, CheckCheck } from "lucide-react";
 import AppLayout from "@/components/layout/AppLayout";
 import { useNotifications } from "@/hooks/useNotifications";
 import { formatDistanceToNow } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 const TYPE_CONFIG: Record<string, { emoji: string; accent: string }> = {
   booking_accepted:    { emoji: "✅", accent: "hsl(142 71% 38%)" },
@@ -16,17 +17,49 @@ const TYPE_CONFIG: Record<string, { emoji: string; accent: string }> = {
   info:                { emoji: "ℹ️",  accent: "hsl(220 50% 50%)" },
 };
 
+/** Returns the deep-link path for a notification */
+function getNotificationLink(n: { type: string; related_booking_id?: string | null; data?: Record<string, any> | null }): string | null {
+  const bookingId = n.related_booking_id || n.data?.booking_id;
+  const chatId    = n.data?.chat_id || n.data?.conversation_id;
+
+  switch (n.type) {
+    case "new_booking":
+    case "booking_accepted":
+    case "booking_rejected":
+    case "booking_completed":
+    case "booking_rescheduled":
+    case "booking_reminder":
+      return bookingId ? `/calendar?booking=${bookingId}` : "/calendar";
+    case "new_message":
+      return chatId ? `/messages/${chatId}` : "/messages";
+    case "new_review":
+      return "/dashboard?tab=reviews";
+    case "promotion":
+      return "/more";
+    default:
+      return null;
+  }
+}
+
 const NotificationsPage = () => {
   const { notifications, loading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const navigate = useNavigate();
 
   const unread = notifications.filter(n => !n.is_read);
   const read   = notifications.filter(n => n.is_read);
 
+  const handleNotificationTap = async (n: typeof notifications[0]) => {
+    if (!n.is_read) await markAsRead(n.id);
+    const link = getNotificationLink(n);
+    if (link) navigate(link);
+  };
+
   const NotiCard = ({ n }: { n: typeof notifications[0] }) => {
     const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.info;
+    const hasLink = !!getNotificationLink(n);
     return (
       <button
-        onClick={() => !n.is_read && markAsRead(n.id)}
+        onClick={() => handleNotificationTap(n)}
         className="w-full text-left rounded-3xl p-4 transition-all tap-scale-sm flex items-start gap-3"
         style={n.is_read ? {
           background: "hsl(var(--background))",
@@ -48,9 +81,16 @@ const NotificationsPage = () => {
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
             {n.body || (n as any).message || ""}
           </p>
-          <p className="text-[10px] text-muted-foreground mt-1.5 font-medium">
-            {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
-          </p>
+          <div className="flex items-center gap-2 mt-1.5">
+            <p className="text-[10px] text-muted-foreground font-medium">
+              {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+            </p>
+            {hasLink && (
+              <span className="text-[10px] font-bold" style={{ color: cfg.accent }}>
+                View →
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Unread dot */}

@@ -1,14 +1,15 @@
 /**
  * ChatWindow.tsx  — shared WhatsApp-style chat component
- * Works in both the customer app (fix2) and business app (neu_output).
+ * Works in both the customer app and business app.
  *
  * Props:
- *   conversationId  — uuid from chat_conversations
- *   currentUserId   — auth.users.id of the logged-in user
- *   currentRole     — 'provider' | 'customer'
- *   otherName       — display name of the other participant
- *   otherAvatar     — avatar url (optional)
- *   onClose         — () => void
+ *   conversationId   — uuid from chat_conversations
+ *   currentUserId    — auth.users.id of the logged-in user
+ *   currentRole      — 'provider' | 'customer'
+ *   otherName        — display name of the other participant
+ *   otherAvatar      — avatar url (optional)
+ *   onClose          — () => void  (back to inbox)
+ *   onBackToDashboard — optional () => void  (shortcut to home dashboard)
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -17,6 +18,55 @@ import {
   Check, CheckCheck, Smile, X, Play, Pause, Square,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+
+// ─── Microphone permission modal ──────────────────────────────────────────────
+const MicPermissionModal = ({
+  onAllow, onDeny,
+}: { onAllow: () => void; onDeny: () => void }) => (
+  <div className="fixed inset-0 z-[200] flex items-end justify-center"
+    style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}>
+    <div
+      className="w-full max-w-lg rounded-t-[2rem] p-6 pb-10 animate-slide-up"
+      style={{ background: "hsl(var(--background))", boxShadow: "0 -8px 40px rgba(0,0,0,0.18)" }}
+    >
+      <div className="flex justify-center mb-4">
+        <div className="w-16 h-16 rounded-3xl flex items-center justify-center"
+          style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}>
+          <Mic className="w-7 h-7" style={{ color: "hsl(var(--primary))" }} />
+        </div>
+      </div>
+      <h2 className="text-lg font-extrabold text-foreground text-center mb-1">
+        Microphone Access
+      </h2>
+      <p className="text-sm text-muted-foreground text-center mb-6 leading-relaxed px-2">
+        BookMe Business needs your microphone to send voice notes.
+        Your audio is only recorded while you hold the mic button — nothing is
+        captured at any other time.
+      </p>
+      <button
+        onClick={onAllow}
+        className="w-full h-[52px] rounded-2xl text-white font-extrabold text-sm flex items-center justify-center gap-2 mb-3 tap-scale"
+        style={{
+          background: "linear-gradient(145deg, hsl(var(--primary)), hsl(220 100% 30%))",
+          boxShadow: "var(--shadow-raised)",
+        }}
+      >
+        <Mic className="w-4 h-4" /> Allow Microphone
+      </button>
+      <button
+        onClick={onDeny}
+        className="w-full h-11 rounded-2xl font-semibold text-sm tap-scale"
+        style={{
+          background: "hsl(var(--background))",
+          boxShadow: "var(--shadow-flat)",
+          color: "hsl(var(--muted-foreground))",
+        }}
+      >
+        Not Now
+      </button>
+    </div>
+  </div>
+);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface Message {
@@ -40,6 +90,8 @@ interface ChatWindowProps {
   otherName: string;
   otherAvatar?: string | null;
   onClose: () => void;
+  /** Optional: navigate all the way back to /home dashboard */
+  onBackToDashboard?: () => void;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -145,7 +197,7 @@ const RecordingBar = ({ seconds, onStop, onCancel }: { seconds: number; onStop: 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 const ChatWindow = ({
-  conversationId, currentUserId, currentRole, otherName, otherAvatar, onClose,
+  conversationId, currentUserId, currentRole, otherName, otherAvatar, onClose, onBackToDashboard,
 }: ChatWindowProps) => {
   const [messages, setMessages]       = useState<Message[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -156,6 +208,8 @@ const ChatWindow = ({
   const [recSeconds, setRecSeconds]   = useState(0);
   const [imagePreview, setImagePreview] = useState<File | null>(null);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  // "unknown" = not asked | "granted" = OK | "requesting" = showing modal | "denied"
+  const [micPermission, setMicPermission] = useState<"unknown"|"granted"|"requesting"|"denied">("unknown");
 
   const bottomRef    = useRef<HTMLDivElement>(null);
   const fileRef      = useRef<HTMLInputElement>(null);
@@ -307,7 +361,17 @@ const ChatWindow = ({
   };
 
   // ── Voice recording ────────────────────────────────────────────────────────
-  const startRecording = async () => {
+  //
+  // Permission flow:
+  //   1. First tap → check browser PermissionsAPI (no OS prompt yet)
+  //      a. Already "granted" → start recording immediately
+  //      b. "denied"          → show our modal explaining they need to unblock in settings
+  //      c. "prompt" / unknown → show our neumorphic modal first, then
+  //                              invoke getUserMedia when user taps "Allow"
+  //   2. Subsequent taps — if micPermission state is "granted", skip straight
+  //      to recording without showing any UI.
+  //
+  const doStartRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mr = new MediaRecorder(stream);
@@ -318,8 +382,29 @@ const ChatWindow = ({
       setRecording(true);
       setRecSeconds(0);
       recTimer.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
+      setMicPermission("granted");
     } catch {
-      alert("Microphone permission denied");
+      // NotAllowedError = user blocked or OS denied
+      setMicPermission("denied");
+    }
+  };
+
+  const startRecording = async () => {
+    if (micPermission === "granted") { doStartRecording(); return; }
+    if (micPermission === "denied")  { setMicPermission("requesting"); return; }
+
+    try {
+      const status = await navigator.permissions.query({ name: "microphone" as PermissionName });
+      if (status.state === "granted") {
+        setMicPermission("granted");
+        doStartRecording();
+      } else if (status.state === "denied") {
+        setMicPermission("requesting");
+      } else {
+        setMicPermission("requesting");
+      }
+    } catch {
+      setMicPermission("requesting");
     }
   };
 
@@ -368,6 +453,17 @@ const ChatWindow = ({
   return (
     <div className="fixed inset-0 z-[300] flex flex-col" style={{ background: "hsl(var(--background))" }}>
 
+      {/* ── Microphone permission modal ──────────────────────────────────── */}
+      {micPermission === "requesting" && (
+        <MicPermissionModal
+          onAllow={() => {
+            setMicPermission("unknown"); // reset so doStartRecording sets it to "granted"
+            doStartRecording();
+          }}
+          onDeny={() => setMicPermission("denied")}
+        />
+      )}
+
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 flex items-center gap-3 px-4 pt-12 pb-3"
         style={{ background: "hsl(var(--background))", boxShadow: "0 2px 12px rgba(13,22,38,0.08)" }}>
@@ -394,6 +490,23 @@ const ChatWindow = ({
             : <p className="text-[11px] text-muted-foreground">tap for info</p>
           }
         </div>
+
+        {/* Dashboard shortcut — only rendered when caller provides the handler */}
+        {onBackToDashboard && (
+          <button
+            onClick={onBackToDashboard}
+            className="w-9 h-9 rounded-2xl flex items-center justify-center tap-scale flex-shrink-0"
+            style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}
+            title="Go to dashboard"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeLinejoin="round"
+              className="w-4 h-4 text-foreground">
+              <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
+              <path d="M9 21V12h6v9" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* ── Messages ────────────────────────────────────────────────────────── */}

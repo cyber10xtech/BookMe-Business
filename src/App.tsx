@@ -61,10 +61,10 @@ const AppInner = () => (
       <Route path="/home" element={<AuthGuard><HomePage /></AuthGuard>} />
       <Route path="/more" element={<AuthGuard><MorePage /></AuthGuard>} />
       <Route path="/clients" element={<AuthGuard><ClientsPage /></AuthGuard>} />
-<Route path="/chats" element={<AuthGuard><ChatsPage role="provider" bare /></AuthGuard>} />
+      <Route path="/chats" element={<AuthGuard><ChatsPage /></AuthGuard>} />
       <Route path="/notifications" element={<AuthGuard><NotificationsPage /></AuthGuard>} />
       <Route path="/edit-profile" element={<AuthGuard><EditProfilePage /></AuthGuard>} />
-      <Route path="/messages" element={<Navigate to="/clients" replace />} />
+      <Route path="/messages" element={<Navigate to="/chats" replace />} />
       <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
