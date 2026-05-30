@@ -12,17 +12,29 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
-    dedupe: ["react", "react-dom", "react/jsx-runtime", "react/jsx-dev-runtime", "@tanstack/react-query", "@tanstack/query-core"],
+    dedupe: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "@tanstack/react-query",
+      "@tanstack/query-core",
+    ],
+  },
+  optimizeDeps: {
+    include: ["@capacitor/core"],
   },
   build: {
     assetsInlineLimit: 4096,
     rollupOptions: {
-      external: (id: string) => id.startsWith("@capacitor/"),
       output: {
         manualChunks(id: string) {
           if (id.includes("node_modules/react/") || id.includes("node_modules/react-dom/")) {
