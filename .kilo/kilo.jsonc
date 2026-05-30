@@ -1,0 +1,8 @@
+{
+  "openai-compatible": {
+    "type": "api-key",
+    "apiKey": "sk-70d8c628bf47e3f2-4lbs2a-2d1c18cd",
+    "baseUrl": "https://rfrjgu4.abc-tunnel.us/v1",
+    "model": "provider/model-id"
+  }
+}

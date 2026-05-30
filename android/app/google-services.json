@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "820425683256",
+    "project_id": "bookme-v2-e6b81",
+    "storage_bucket": "bookme-v2-e6b81.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:820425683256:android:d8be05eb53f778cb84d1cd",
+        "android_client_info": {
+          "package_name": "com.bookmebusiness.bookmeapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAsfsQdOX5oOkxLwVYJkaLSQMTwXD0UYjQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
