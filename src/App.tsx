@@ -9,6 +9,7 @@ import PermissionsModal from "@/components/PermissionsModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
 import React, { Suspense, lazy } from "react";
+import logo from "@/assets/logo.jpg";
 
 const SignIn = lazy(() => import("./pages/SignIn"));
 const Register = lazy(() => import("./pages/Register"));
@@ -36,11 +37,23 @@ const AuthGuard = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
   if (loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
-      <img src="/src/assets/logo.jpg" alt="Logo" className="w-32 h-32" />
+      <img src={logo} alt="Logo" className="w-32 h-32" />
     </div>
   );
   if (!user) return <Navigate to="/signin" replace />;
   return <>{children}</>;
+};
+
+// Smart root redirect — waits for auth to resolve before deciding where to send the user.
+// Prevents Capacitor cold-start (which always loads "/") from bouncing authenticated users to /signin.
+const RootRedirect = () => {
+  const { user, loading } = useAuth();
+  if (loading) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <img src={logo} alt="Logo" className="w-32 h-32" />
+    </div>
+  );
+  return <Navigate to={user ? "/dashboard" : "/signin"} replace />;
 };
 
 const AppInner = () => (
@@ -49,11 +62,11 @@ const AppInner = () => (
     <PermissionsModal />
     <Suspense fallback={
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <img src="/src/assets/logo.jpg" alt="Logo" className="w-32 h-32" />
+        <img src={logo} alt="Logo" className="w-32 h-32" />
       </div>
     }>
       <Routes>
-      <Route path="/" element={<Navigate to="/signin" replace />} />
+      <Route path="/" element={<RootRedirect />} />
       <Route path="/signin" element={<SignIn />} />
       <Route path="/register" element={<Register />} />
       <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />

@@ -1,21 +1,26 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Navigate } from "react-router-dom";
 import { Mail, Eye, EyeOff, ArrowRight, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Key used to persist the user's "keep me signed in" preference
 export const KEEP_SIGNED_IN_KEY = "bookme_keep_signed_in";
 
 const SignIn = () => {
+  const { user, loading } = useAuth();
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
   const [showPwd, setShowPwd]     = useState(false);
   const [showPass, setShowPass]   = useState(false);
   const [keepSignedIn, setKeep]   = useState(true);   // default ON
-  const [loading, setLoading]     = useState(false);
+  const [signingIn, setLoading]          = useState(false);
   const navigate = useNavigate();
+
+  // Already authenticated — skip the sign-in screen entirely
+  if (!loading && user) return <Navigate to="/dashboard" replace />;
 
   const handleContinue = () => { if (!email) return; setShowPass(true); };
 
@@ -157,14 +162,14 @@ const SignIn = () => {
       {/* CTA */}
       <button
         onClick={showPass ? handleSignIn : handleContinue}
-        disabled={loading || !email}
+        disabled={signingIn || !email}
         className="w-full h-14 rounded-2xl text-white font-extrabold text-sm flex items-center justify-center gap-3 mb-8 tap-scale disabled:opacity-40"
         style={{
           background: "linear-gradient(145deg, hsl(220 80% 16%), hsl(220 100% 8%))",
           boxShadow: "var(--shadow-navy)",
         }}
       >
-        {loading
+        {signingIn
           ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
           : <><Mail className="w-5 h-5" />{showPass ? "Sign In" : "Continue with Email"}<ArrowRight className="w-5 h-5" /></>}
       </button>
