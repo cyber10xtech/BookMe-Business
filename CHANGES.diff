@@ -1,293 +1,66 @@
---- orig/BookME_Business_Final3/src/hooks/useBookings.ts	2026-08-17 20:27:16.000000000 +0000
-+++ BookME_Business_Final3/src/hooks/useBookings.ts	2026-08-17 20:50:23.932782774 +0000
-@@ -9,6 +9,10 @@
- export interface EnrichedBooking extends Booking {
-   customer_avatar_url?: string | null;
-   customer_phone_from_profile?: string | null;
-+  // auth.users.id of the customer — needed to open/create the existing
-+  // in-app chat_conversations row for this booking (see ChatWindow.tsx /
-+  // ClientsPage.tsx handleChat for the reference implementation).
-+  customer_user_id?: string | null;
- }
+--- orig/BookME_Business_Final3/src/components/onboarding/StepLocation.tsx	2026-08-17 20:27:16.000000000 +0000
++++ BookME_Business_Final3/src/components/onboarding/StepLocation.tsx	2026-08-17 21:17:52.830708916 +0000
+@@ -2,6 +2,8 @@
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+ import { Label } from "@/components/ui/label";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
++import { NIGERIAN_STATES } from "@/lib/nigerianStates";
  
- const STATUS_MAP: Record<string, string> = {
-@@ -50,7 +54,8 @@
-         *,
-         customer_profile:profiles!bookings_customer_id_fkey(
-           avatar_url,
--          phone
-+          phone,
-+          user_id
-         )
-       `)
-       .eq("provider_id", profile.id)
-@@ -71,6 +76,7 @@
-         ...b,
-         customer_avatar_url: b.customer_profile?.avatar_url ?? null,
-         customer_phone_from_profile: b.customer_profile?.phone ?? null,
-+        customer_user_id: b.customer_profile?.user_id ?? null,
-       }));
-       setBookings(enriched);
-     }
---- orig/BookME_Business_Final3/src/pages/CalendarPage.tsx	2026-08-17 20:27:16.000000000 +0000
-+++ BookME_Business_Final3/src/pages/CalendarPage.tsx	2026-08-17 20:51:59.988185808 +0000
-@@ -1,7 +1,12 @@
- import { useState, useCallback } from "react";
- import { ChevronLeft, ChevronRight, CheckCircle, XCircle, CheckCircle2, Clock, MapPin, Calendar, Phone, X, MessageSquare } from "lucide-react";
- import AppLayout from "@/components/layout/AppLayout";
-+import ChatWindow from "@/components/ChatWindow";
-+import { canMessageBooking } from "@/lib/messagingWindow";
-+import { useAuth } from "@/contexts/AuthContext";
-+import { useProfile } from "@/hooks/useProfile";
- import { useBookings, type EnrichedBooking } from "@/hooks/useBookings";
-+import { supabase } from "@/lib/supabase";
- import { toast } from "sonner";
+ interface StepLocationProps {
+   data: { address: string; city: string; state: string };
+@@ -64,12 +66,16 @@
+         </div>
+         <div>
+           <Label className="text-sm font-semibold text-foreground">State</Label>
+-          <Input
+-            placeholder="State"
+-            value={data.state}
+-            onChange={(e) => onChange({ state: e.target.value })}
+-            className="mt-1.5 h-12 rounded-xl bg-secondary border-0"
+-          />
++          <Select value={data.state || undefined} onValueChange={(v) => onChange({ state: v })}>
++            <SelectTrigger className="mt-1.5 h-12 rounded-xl bg-secondary border-0">
++              <SelectValue placeholder="Select State" />
++            </SelectTrigger>
++            <SelectContent>
++              {NIGERIAN_STATES.map((s) => (
++                <SelectItem key={s} value={s}>{s}</SelectItem>
++              ))}
++            </SelectContent>
++          </Select>
+         </div>
+       </div>
  
- const WEEKDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-@@ -30,10 +35,11 @@
-       </div>;
- };
- 
--const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, accepting }: {
-+const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, accepting, onChat }: {
-   booking: EnrichedBooking; onClose: () => void;
-   onAccept: (id: string) => Promise<void>; onReject: (id: string) => Promise<void>;
-   onComplete: (id: string) => Promise<void>; accepting: string|null;
-+  onChat: (booking: EnrichedBooking) => void;
- }) => {
-   const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-NG", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-   const accentGrad: Record<string, string> = {
-@@ -85,6 +91,17 @@
-               </div>
-             </div>
-           </div>
-+          {booking.customer_user_id && (
-+            <button onClick={() => onChat(booking)}
-+              className="w-full flex items-center gap-3 rounded-3xl p-4 tap-scale"
-+              style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}>
-+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
-+                <MessageSquare className="w-4 h-4 text-primary" />
-+              </div>
-+              <p className="text-sm font-bold flex-1 text-left">Message {booking.customer_name || "customer"}</p>
-+              <span className="text-xs font-bold text-primary px-2 py-1 rounded-xl" style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>Chat</span>
-+            </button>
-+          )}
-           {(booking.customer_phone || booking.customer_phone_from_profile) && (
-             <a href={`tel:${booking.customer_phone || booking.customer_phone_from_profile}`}
-               className="flex items-center gap-3 rounded-3xl p-4 tap-scale"
-@@ -133,12 +150,61 @@
- };
- 
- const CalendarPage = () => {
-+  const { user } = useAuth();
-+  const { profile } = useProfile();
-   const { bookings, updateBookingStatus } = useBookings();
-   const [currentDate, setCurrentDate] = useState(new Date());
-   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
-   const [selectedBooking, setSelectedBooking] = useState<EnrichedBooking|null>(null);
-   const [accepting, setAccepting] = useState<string|null>(null);
- 
-+  // In-app chat state — reuses the existing chat_conversations / ChatWindow
-+  // architecture (same pattern as ClientsPage.tsx / Dashboard.tsx), scoped
-+  // to whichever booking the business tapped "Message" on.
-+  const [chatBooking, setChatBooking] = useState<EnrichedBooking | null>(null);
-+  const [chatConvId,  setChatConvId]  = useState<string | null>(null);
-+  const [chatOpen,    setChatOpen]    = useState(false);
-+
-+  const handleChat = useCallback(async (booking: EnrichedBooking) => {
-+    if (!booking.customer_user_id || !booking.customer_id || !profile || !user) return;
-+    setSelectedBooking(null);
-+    setChatBooking(booking);
-+
-+    const { data: existing } = await supabase
-+      .from("chat_conversations")
-+      .select("id")
-+      .eq("provider_id", profile.id)
-+      .eq("customer_id", booking.customer_id)
-+      .maybeSingle();
-+
-+    if (existing) {
-+      setChatConvId(existing.id);
-+      setChatOpen(true);
-+      return;
-+    }
-+
-+    const { data, error } = await supabase.from("chat_conversations").insert({
-+      booking_id:       booking.id,
-+      provider_id:      profile.id,
-+      customer_id:      booking.customer_id,
-+      provider_user_id: user.id,
-+      customer_user_id: booking.customer_user_id,
-+    }).select("id").single();
-+
-+    if (data) {
-+      setChatConvId(data.id);
-+      setChatOpen(true);
-+    } else if (error?.code === "23505") {
-+      const { data: retry } = await supabase
-+        .from("chat_conversations")
-+        .select("id")
-+        .eq("provider_id", profile.id)
-+        .eq("customer_id", booking.customer_id)
-+        .maybeSingle();
-+      if (retry) { setChatConvId(retry.id); setChatOpen(true); }
-+    }
-+  }, [profile, user]);
-+
-   const year  = currentDate.getFullYear();
-   const month = currentDate.getMonth();
-   const today = new Date().toISOString().split("T")[0];
-@@ -184,7 +250,20 @@
-     <AppLayout>
-       {selectedBooking && (
-         <BookingSheet booking={selectedBooking} onClose={() => setSelectedBooking(null)}
--          onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} accepting={accepting} />
-+          onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} accepting={accepting}
-+          onChat={handleChat} />
-+      )}
-+
-+      {chatOpen && chatConvId && chatBooking && user && (
-+        <ChatWindow
-+          conversationId={chatConvId}
-+          currentUserId={user.id}
-+          currentRole="provider"
-+          otherName={chatBooking.customer_name || "Customer"}
-+          otherAvatar={chatBooking.customer_avatar_url ?? null}
-+          canMessage={canMessageBooking(chatBooking)}
-+          onClose={() => { setChatOpen(false); setChatBooking(null); setChatConvId(null); }}
-+        />
-       )}
- 
-       <div className="px-5 pt-5 pb-8">
---- orig/BookME_Business_Final3/src/pages/Dashboard.tsx	2026-08-17 20:27:16.000000000 +0000
-+++ BookME_Business_Final3/src/pages/Dashboard.tsx	2026-08-17 20:51:16.041486183 +0000
-@@ -13,6 +13,8 @@
- import AppLayout from "@/components/layout/AppLayout";
- import ProfileCompletionBar from "@/components/dashboard/ProfileCompletionBar";
- import AddServiceSheet, { type AddServiceData } from "@/components/dashboard/AddServiceSheet";
-+import ChatWindow from "@/components/ChatWindow";
-+import { canMessageBooking } from "@/lib/messagingWindow";
- import { useAuth } from "@/contexts/AuthContext";
+--- orig/BookME_Business_Final3/src/pages/EditProfilePage.tsx	2026-08-17 20:27:16.000000000 +0000
++++ BookME_Business_Final3/src/pages/EditProfilePage.tsx	2026-08-17 21:17:39.212554805 +0000
+@@ -8,8 +8,10 @@
  import { useProfile } from "@/hooks/useProfile";
+ import { useAuth } from "@/contexts/AuthContext";
+ import { toast } from "sonner";
+-import { Switch } from "@/components/ui/switch";
++import { Switch } from "@/components/ui/switch";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+ import { CATEGORIES } from "@/lib/categories";
++import { NIGERIAN_STATES } from "@/lib/nigerianStates";
+ import { useProfileCompletion, COMPLETION_THRESHOLD } from "@/hooks/useProfileCompletion";
  import { useServices } from "@/hooks/useServices";
-@@ -61,10 +63,11 @@
- };
  
- /* ── Booking detail bottom sheet ─────────────────────────────────────────────── */
--const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, accepting }: {
-+const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, accepting, onChat }: {
-   booking: EnrichedBooking; onClose: () => void;
-   onAccept: (id: string) => Promise<void>; onReject: (id: string) => Promise<void>;
-   onComplete: (id: string) => Promise<void>; accepting: string|null;
-+  onChat: (booking: EnrichedBooking) => void;
- }) => {
-   const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-NG",
-     { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-@@ -154,14 +157,16 @@
-           <div className="rounded-3xl p-4 space-y-3"
-             style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}>
-             <p className="text-[10px] font-bold text-muted-foreground uppercase">Customer Contact</p>
--            {booking.customer_email && (
--              <div className="flex items-center gap-3">
-+            {booking.customer_user_id && (
-+              <button onClick={() => onChat(booking)} className="w-full flex items-center gap-3 tap-scale">
-                 <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-                   style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
-                   <MessageSquare className="w-4 h-4 text-primary" />
-                 </div>
--                <p className="text-sm text-foreground">{booking.customer_email}</p>
--              </div>
-+                <p className="text-sm font-bold text-foreground flex-1 text-left">Message {booking.customer_name || "customer"}</p>
-+                <span className="text-xs font-bold text-primary px-2 py-1 rounded-xl"
-+                  style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>Chat</span>
-+              </button>
-             )}
-             {(booking.customer_phone || booking.customer_phone_from_profile) && (
-               <a href={`tel:${booking.customer_phone || booking.customer_phone_from_profile}`}
-@@ -493,6 +498,13 @@
-   const [promoDialog, setPromoDialog] = useState(false);
-   const [newPromo, setNewPromo]     = useState({ title: "", description: "", discount_type: "percentage", discount_value: "", service_id: "" });
+@@ -284,7 +286,16 @@
+           </div>
+           <div>
+             <Label className="text-xs font-semibold text-muted-foreground uppercase">State</Label>
+-            <Input value={form.state} onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))} className="mt-1 h-12 rounded-xl bg-secondary border-0" />
++            <Select value={form.state || undefined} onValueChange={(v) => setForm((p) => ({ ...p, state: v }))}>
++              <SelectTrigger className="mt-1 h-12 rounded-xl bg-secondary border-0">
++                <SelectValue placeholder="Select State" />
++              </SelectTrigger>
++              <SelectContent>
++                {NIGERIAN_STATES.map((s) => (
++                  <SelectItem key={s} value={s}>{s}</SelectItem>
++                ))}
++              </SelectContent>
++            </Select>
+           </div>
+         </div>
  
-+  // In-app chat state — reuses the existing chat_conversations / ChatWindow
-+  // architecture (same pattern as ClientsPage.tsx's handleChat), scoped to
-+  // whichever booking the business tapped "Message" on.
-+  const [chatBooking, setChatBooking] = useState<EnrichedBooking | null>(null);
-+  const [chatConvId,  setChatConvId]  = useState<string | null>(null);
-+  const [chatOpen,    setChatOpen]    = useState(false);
-+
-   const tipShown     = useRef(false);
-   const pendingShown = useRef(false);
- 
-@@ -533,6 +545,50 @@
-   const handleReject  = useCallback(async (id: string) => { await updateBookingStatus(id, "rejected"); toast.info("Booking declined."); setSelected(null); }, [updateBookingStatus]);
-   const handleComplete = useCallback(async (id: string) => { await updateBookingStatus(id, "completed"); toast.success("Booking complete! 🎉"); setSelected(null); }, [updateBookingStatus]);
- 
-+  // Open (or lazily create) the existing in-app conversation for this
-+  // booking's customer, then hand off to the shared ChatWindow component —
-+  // the exact same booking_id/provider_id/customer_id relationship and
-+  // conversation-lookup pattern already used in ClientsPage.tsx.
-+  const handleChat = useCallback(async (booking: EnrichedBooking) => {
-+    if (!booking.customer_user_id || !booking.customer_id || !profile || !user) return;
-+    setSelected(null);
-+    setChatBooking(booking);
-+
-+    const { data: existing } = await supabase
-+      .from("chat_conversations")
-+      .select("id")
-+      .eq("provider_id", profile.id)
-+      .eq("customer_id", booking.customer_id)
-+      .maybeSingle();
-+
-+    if (existing) {
-+      setChatConvId(existing.id);
-+      setChatOpen(true);
-+      return;
-+    }
-+
-+    const { data, error } = await supabase.from("chat_conversations").insert({
-+      booking_id:       booking.id,
-+      provider_id:      profile.id,
-+      customer_id:      booking.customer_id,
-+      provider_user_id: user.id,
-+      customer_user_id: booking.customer_user_id,
-+    }).select("id").single();
-+
-+    if (data) {
-+      setChatConvId(data.id);
-+      setChatOpen(true);
-+    } else if (error?.code === "23505") {
-+      const { data: retry } = await supabase
-+        .from("chat_conversations")
-+        .select("id")
-+        .eq("provider_id", profile.id)
-+        .eq("customer_id", booking.customer_id)
-+        .maybeSingle();
-+      if (retry) { setChatConvId(retry.id); setChatOpen(true); }
-+    }
-+  }, [profile, user]);
-+
-   const handleAddPromotion = async () => {
-     if (!newPromo.title || !newPromo.discount_value || !profile) return;
-     const { data } = await supabase.from("promotions").insert({
-@@ -578,7 +634,20 @@
-     <AppLayout>
-       {selectedBooking && (
-         <BookingSheet booking={selectedBooking} onClose={() => setSelected(null)}
--          onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} accepting={accepting} />
-+          onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} accepting={accepting}
-+          onChat={handleChat} />
-+      )}
-+
-+      {chatOpen && chatConvId && chatBooking && user && (
-+        <ChatWindow
-+          conversationId={chatConvId}
-+          currentUserId={user.id}
-+          currentRole="provider"
-+          otherName={chatBooking.customer_name || "Customer"}
-+          otherAvatar={chatBooking.customer_avatar_url ?? null}
-+          canMessage={canMessageBooking(chatBooking)}
-+          onClose={() => { setChatOpen(false); setChatBooking(null); setChatConvId(null); }}
-+        />
-       )}
- 
-       {/* ── Hero header ── */}

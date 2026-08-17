@@ -9,7 +9,9 @@ import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CATEGORIES } from "@/lib/categories";
+import { NIGERIAN_STATES } from "@/lib/nigerianStates";
 import { useProfileCompletion, COMPLETION_THRESHOLD } from "@/hooks/useProfileCompletion";
 import { useServices } from "@/hooks/useServices";
 
@@ -284,7 +286,16 @@ const EditProfilePage = () => {
           </div>
           <div>
             <Label className="text-xs font-semibold text-muted-foreground uppercase">State</Label>
-            <Input value={form.state} onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))} className="mt-1 h-12 rounded-xl bg-secondary border-0" />
+            <Select value={form.state || undefined} onValueChange={(v) => setForm((p) => ({ ...p, state: v }))}>
+              <SelectTrigger className="mt-1 h-12 rounded-xl bg-secondary border-0">
+                <SelectValue placeholder="Select State" />
+              </SelectTrigger>
+              <SelectContent>
+                {NIGERIAN_STATES.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

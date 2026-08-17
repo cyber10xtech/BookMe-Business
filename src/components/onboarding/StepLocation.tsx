@@ -2,6 +2,8 @@ import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NIGERIAN_STATES } from "@/lib/nigerianStates";
 
 interface StepLocationProps {
   data: { address: string; city: string; state: string };
@@ -64,12 +66,16 @@ const StepLocation = ({ data, onChange, onNext, onBack }: StepLocationProps) => 
         </div>
         <div>
           <Label className="text-sm font-semibold text-foreground">State</Label>
-          <Input
-            placeholder="State"
-            value={data.state}
-            onChange={(e) => onChange({ state: e.target.value })}
-            className="mt-1.5 h-12 rounded-xl bg-secondary border-0"
-          />
+          <Select value={data.state || undefined} onValueChange={(v) => onChange({ state: v })}>
+            <SelectTrigger className="mt-1.5 h-12 rounded-xl bg-secondary border-0">
+              <SelectValue placeholder="Select State" />
+            </SelectTrigger>
+            <SelectContent>
+              {NIGERIAN_STATES.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
