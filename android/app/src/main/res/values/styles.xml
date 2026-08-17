@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+    </style>
+
+    <!--
+      capacitor.config.ts sets SplashScreen.androidSplashResourceName =
+      "splash_centered" with a white background (matches this project's iOS
+      Splash.imageset). That drawable/mipmap doesn't exist in this
+      hand-authored scaffold (it's an image asset, not something I can
+      generate) — this uses a plain white background as a placeholder.
+      Add the real splash_centered drawable (Android Studio's Image Asset /
+      Adaptive Icon tool, or @capacitor/assets) and this theme will pick it
+      up once referenced below in place of @color/white.
+    -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@color/white</item>
+    </style>
+</resources>
