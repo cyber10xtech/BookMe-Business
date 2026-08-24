@@ -1,17 +1,19 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.bookmebusiness.bookmeapp"
-    compileSdk rootProject.ext.compileSdkVersion
+    namespace = "com.bookmebusiness.bookmeapp"
+    compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "com.bookmebusiness.bookmeapp"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 119
+        versionName "11.9"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-            ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
     buildTypes {
@@ -38,18 +40,10 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
-
-    // Firebase Cloud Messaging — backs @capacitor-firebase/messaging on Android.
-    // Requires android/app/google-services.json (not included — see
-    // DEEP_LINK_README.md "Still to do").
-    implementation platform("com.google.firebase:firebase-bom:33.7.0")
-    implementation "com.google.firebase:firebase-messaging"
 }
 
 apply from: 'capacitor.build.gradle'
 
-// Applied only if google-services.json is present, so the build doesn't
-// break before that file is added (see DEEP_LINK_README.md "Still to do").
 try {
     def servicesJSON = file('google-services.json')
     if (servicesJSON.text) {

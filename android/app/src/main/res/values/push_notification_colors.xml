@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tint for the FCM status-bar/tray notification icon (see the
+         com.google.firebase.messaging.default_notification_color meta-data
+         in AndroidManifest.xml). Matches the app's brand navy
+         (primary: hsl(220 100% 12%) / #0d1626 in src/index.css). -->
+    <color name="notification_icon_color">#0D1626</color>
+</resources>

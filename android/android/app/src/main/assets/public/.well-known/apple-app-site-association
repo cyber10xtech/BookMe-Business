@@ -1,0 +1,18 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["L4TKDN4H8W.com.bookmebusiness.customerapp1"],
+        "components": [
+          {
+            "/": "/provider/*",
+            "comment": "Provider profile deep link — routes to BookMe Customer App"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["L4TKDN4H8W.com.bookmebusiness.customerapp1"]
+  }
+}

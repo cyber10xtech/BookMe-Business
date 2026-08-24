@@ -1,0 +1,6 @@
+import{c as d,b as s,e as p}from"./index-CF3O8SLK.js";import{r as o,j as t}from"./react-vendor-BCrIk91A.js";import{k as n}from"./radix-vendor-DeRwHo_m.js";/**
+ * @license lucide-react v0.462.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */const u=d("Camera",[["path",{d:"M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z",key:"1tc9qg"}],["circle",{cx:"12",cy:"13",r:"3",key:"1vg3eu"}]]),i=p("text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"),x=o.forwardRef(({className:a,...e},r)=>t.jsx(n,{ref:r,className:s(i(),a),...e}));x.displayName=n.displayName;const l=o.forwardRef(({className:a,...e},r)=>t.jsx("textarea",{className:s("flex min-h-[90px] w-full rounded-2xl px-4 py-3 text-sm","bg-[hsl(var(--background))]","shadow-[inset_3px_3px_8px_var(--neu-dark),inset_-3px_-3px_8px_var(--neu-light)]","text-foreground placeholder:text-muted-foreground","border-0 outline-none resize-none","transition-shadow duration-150","focus:shadow-[inset_3px_3px_8px_var(--neu-dark),inset_-3px_-3px_8px_var(--neu-light),0_0_0_2.5px_hsl(var(--primary)/0.3)]","disabled:cursor-not-allowed disabled:opacity-50",a),ref:r,...e}));l.displayName="Textarea";export{u as C,x as L,l as T};

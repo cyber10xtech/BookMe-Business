@@ -1,7 +1,5 @@
-// capacitor.settings.gradle is generated automatically by `npx cap sync android`
-// (it includes ':capacitor-android' plus a module per installed Capacitor
-// plugin, pointed at their locations under node_modules). It does not exist
-// yet in this hand-authored scaffold — run `npm install && npx cap sync android`
-// once before opening this project, and this line will resolve.
 include ':app'
+include ':capacitor-cordova-android-plugins'
+project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins/')
+
 apply from: 'capacitor.settings.gradle'

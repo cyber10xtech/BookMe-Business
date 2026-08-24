@@ -1,0 +1,41 @@
+{
+	"appId": "com.bookmebusiness.bookmeapp",
+	"appName": "BookMe Business",
+	"webDir": "dist",
+	"server": {
+		"cleartext": true
+	},
+	"ios": {
+		"contentInset": "always",
+		"scrollEnabled": true,
+		"backgroundColor": "#ffffff"
+	},
+	"experimental": {
+		"ios": {
+			"spm": {
+				"packageOptions": {
+					"@capacitor-firebase/messaging": {
+						"symlink": true
+					}
+				}
+			}
+		}
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchAutoHide": false,
+			"backgroundColor": "#ffffff",
+			"androidSplashResourceName": "splash_centered",
+			"splashFullScreen": false,
+			"splashImmersive": false,
+			"fadeOutDuration": 300
+		},
+		"FirebaseMessaging": {
+			"presentationOptions": [
+				"badge",
+				"sound",
+				"alert"
+			]
+		}
+	}
+}

@@ -1,0 +1,66 @@
+--- orig/BookME_Business_Final3/src/components/onboarding/StepLocation.tsx	2026-08-17 20:27:16.000000000 +0000
++++ BookME_Business_Final3/src/components/onboarding/StepLocation.tsx	2026-08-17 21:17:52.830708916 +0000
+@@ -2,6 +2,8 @@
+ import { Button } from "@/components/ui/button";
+ import { Input } from "@/components/ui/input";
+ import { Label } from "@/components/ui/label";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
++import { NIGERIAN_STATES } from "@/lib/nigerianStates";
+ 
+ interface StepLocationProps {
+   data: { address: string; city: string; state: string };
+@@ -64,12 +66,16 @@
+         </div>
+         <div>
+           <Label className="text-sm font-semibold text-foreground">State</Label>
+-          <Input
+-            placeholder="State"
+-            value={data.state}
+-            onChange={(e) => onChange({ state: e.target.value })}
+-            className="mt-1.5 h-12 rounded-xl bg-secondary border-0"
+-          />
++          <Select value={data.state || undefined} onValueChange={(v) => onChange({ state: v })}>
++            <SelectTrigger className="mt-1.5 h-12 rounded-xl bg-secondary border-0">
++              <SelectValue placeholder="Select State" />
++            </SelectTrigger>
++            <SelectContent>
++              {NIGERIAN_STATES.map((s) => (
++                <SelectItem key={s} value={s}>{s}</SelectItem>
++              ))}
++            </SelectContent>
++          </Select>
+         </div>
+       </div>
+ 
+--- orig/BookME_Business_Final3/src/pages/EditProfilePage.tsx	2026-08-17 20:27:16.000000000 +0000
++++ BookME_Business_Final3/src/pages/EditProfilePage.tsx	2026-08-17 21:17:39.212554805 +0000
+@@ -8,8 +8,10 @@
+ import { useProfile } from "@/hooks/useProfile";
+ import { useAuth } from "@/contexts/AuthContext";
+ import { toast } from "sonner";
+-import { Switch } from "@/components/ui/switch";
++import { Switch } from "@/components/ui/switch";
++import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+ import { CATEGORIES } from "@/lib/categories";
++import { NIGERIAN_STATES } from "@/lib/nigerianStates";
+ import { useProfileCompletion, COMPLETION_THRESHOLD } from "@/hooks/useProfileCompletion";
+ import { useServices } from "@/hooks/useServices";
+ 
+@@ -284,7 +286,16 @@
+           </div>
+           <div>
+             <Label className="text-xs font-semibold text-muted-foreground uppercase">State</Label>
+-            <Input value={form.state} onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))} className="mt-1 h-12 rounded-xl bg-secondary border-0" />
++            <Select value={form.state || undefined} onValueChange={(v) => setForm((p) => ({ ...p, state: v }))}>
++              <SelectTrigger className="mt-1 h-12 rounded-xl bg-secondary border-0">
++                <SelectValue placeholder="Select State" />
++              </SelectTrigger>
++              <SelectContent>
++                {NIGERIAN_STATES.map((s) => (
++                  <SelectItem key={s} value={s}>{s}</SelectItem>
++                ))}
++              </SelectContent>
++            </Select>
+           </div>
+         </div>
+ 
