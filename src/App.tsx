@@ -4,7 +4,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { setupDeepLinks } from "@/services/native";
 import PermissionsModal from "@/components/PermissionsModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEffect } from "react";
@@ -25,13 +24,6 @@ const EditProfilePage = lazy(() => import("./pages/EditProfilePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
-
-const DeepLinkHandler = () => {
-  const navigate = useNavigate();
-  useEffect(() => { setupDeepLinks(navigate); }, [navigate]);
-  return null;
-};
-
 
 
 const AuthGuard = ({ children }: { children: React.ReactNode }) => {
@@ -64,7 +56,6 @@ const AppInner = () => {
 
   return (
   <>
-    <DeepLinkHandler />
     <PermissionsModal />
     <Suspense fallback={
       <div className="min-h-screen bg-background flex items-center justify-center">

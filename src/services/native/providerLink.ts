@@ -20,7 +20,7 @@
  * public profile; otherwise it falls back to the web profile page.
  */
 
-export const BOOKME_UNIVERSAL_LINK_DOMAIN = "https://bookmebusiness.com";
+export const BOOKME_UNIVERSAL_LINK_DOMAIN = "https://business.bookmebusiness.com";
 
 /**
  * Builds the canonical public profile Universal Link for a provider.
