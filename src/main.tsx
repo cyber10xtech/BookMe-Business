@@ -2,6 +2,8 @@ import { createRoot } from "react-dom/client";
 import { isNative } from "@/services/native/platform";
 import App from "./App.tsx";
 import "./index.css";
+import { CapacitorUpdater } from '@capgo/capacitor-updater';
+import { Capacitor } from '@capacitor/core';
 
 // Unregister service workers in preview/iframe contexts
 const isInIframe = (() => {
@@ -11,29 +13,26 @@ const isPreviewHost =
   window.location.hostname.includes("id-preview--") ||
   window.location.hostname.includes("lovableproject.com");
 
-if (isPreviewHost || isInIframe) {
-  navigator.serviceWorker?.getRegistrations().then((regs) =>
-    regs.forEach((r) => r.unregister())
-  );
+if ('serviceWorker' in navigator) {
+  if (isPreviewHost || isInIframe || isNative()) {
+    navigator.serviceWorker.getRegistrations().then((regs) =>
+      regs.forEach((r) => r.unregister())
+    );
+  } else if (window.location.protocol === 'https:' || window.location.hostname === 'localhost') {
+    const origin = window.location.origin === 'null' ? '' : window.location.origin;
+    const swUrl = `${origin}/sw.js`;
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register(swUrl).then((reg) => {
+        console.log('Service worker registered:', reg.scope);
+      }).catch((err) => {
+        console.warn('Service worker registration failed:', err);
+      });
+    });
+  }
+}
+
+if (Capacitor.isNativePlatform()) {
+  CapacitorUpdater.notifyAppReady();
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
-
-const shouldRegisterServiceWorker = () => {
-  if (isPreviewHost || isInIframe) return false;
-  if (!('serviceWorker' in navigator)) return false;
-  if (isNative()) return true;
-  return window.location.protocol === 'https:' || window.location.hostname === 'localhost';
-};
-
-if (shouldRegisterServiceWorker()) {
-  const origin = window.location.origin === 'null' ? '' : window.location.origin;
-  const swUrl = `${origin}/sw.js`;
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register(swUrl).then((reg) => {
-      console.log('Service worker registered:', reg.scope);
-    }).catch((err) => {
-      console.warn('Service worker registration failed:', err);
-    });
-  });
-}
