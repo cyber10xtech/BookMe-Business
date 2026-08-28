@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { syncStatusBar } from "@/lib/statusBar";
 import React, { Suspense, lazy } from "react";
 import logo from "@/assets/logo.jpg";
+import { UpdateDialog } from "@/components/UpdateDialog";
 
 const SignIn = lazy(() => import("./pages/SignIn"));
 const Register = lazy(() => import("./pages/Register"));
@@ -56,6 +57,7 @@ const AppInner = () => {
 
   return (
   <>
+    <UpdateDialog />
     <PermissionsModal />
     <Suspense fallback={
       <div className="min-h-screen bg-background flex items-center justify-center">

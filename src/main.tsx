@@ -2,7 +2,6 @@ import { createRoot } from "react-dom/client";
 import { isNative } from "@/services/native/platform";
 import App from "./App.tsx";
 import "./index.css";
-import { CapacitorUpdater } from '@capgo/capacitor-updater';
 import { Capacitor } from '@capacitor/core';
 
 // Unregister service workers in preview/iframe contexts
@@ -32,7 +31,6 @@ if ('serviceWorker' in navigator) {
 }
 
 if (Capacitor.isNativePlatform()) {
-  CapacitorUpdater.notifyAppReady();
-}
+  }
 
 createRoot(document.getElementById("root")!).render(<App />);
