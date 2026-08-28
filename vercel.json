@@ -87,6 +87,10 @@
   ],
   "rewrites": [
     {
+      "source": "/provider/:id",
+      "destination": "https://customer.bookmebusiness.com/provider/:id"
+    },
+    {
       "source": "/((?!assets|favicon|placeholder|robots|sw\\.js|_headers).*)",
       "destination": "/index.html"
     }
