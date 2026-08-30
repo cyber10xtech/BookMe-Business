@@ -141,7 +141,17 @@ async function sendFcmMessage(
           },
         },
         apns: {
-          payload: { aps: { sound: "default", badge: 1 } },
+          headers: {
+            "apns-push-type": "alert",
+            "apns-priority": "10",
+          },
+          payload: {
+            aps: {
+              alert: { title, body },
+              sound: "default",
+              badge: 1,
+            },
+          },
         },
         data, // all values must be strings — enforced by caller
       },

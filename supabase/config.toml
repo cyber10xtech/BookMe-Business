@@ -1,0 +1,4 @@
+project_id = "trnsuruvwdzfrhfaboxe"
+
+[functions.send-notification]
+verify_jwt = true
