@@ -1,148 +1,146 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Sparkles, ShieldCheck, Rocket } from "lucide-react";
-import logo from "@/assets/logo.jpg";
+import { Store, Crown } from "lucide-react";
 
 interface WelcomePromotionModalProps {
   open: boolean;
   onContinue: () => void;
-  /** How many founding-business slots the offer applies to (from promo_campaigns.max_claims) */
   spotCount?: number;
-  /** ISO timestamp the granted trial expires at (from promo_claims.trial_end_at) */
   trialEndAt?: string;
   platformName?: string;
 }
 
-/** Renders "2 Months Free" / "6 Weeks Free" / "45 Days Free" depending on
- *  however many days the backend actually granted, so the copy always
- *  matches promo_campaigns.trial_days rather than assuming it's 2 months. */
-const formatTrialLength = (trialEndAt?: string): string => {
-  if (!trialEndAt) return "2 Months Free";
-  const days = Math.round((new Date(trialEndAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-  if (days <= 0) return "Free Trial";
-  if (days % 30 === 0) return `${days / 30} Month${days / 30 === 1 ? "" : "s"} Free`;
-  if (days % 7 === 0) return `${days / 7} Week${days / 7 === 1 ? "" : "s"} Free`;
-  return `${days} Days Free`;
-};
-
-const SPARKLE_POSITIONS = [
-  { top: "6%", left: "12%", size: 7, delay: "0s" },
-  { top: "14%", left: "85%", size: 5, delay: "0.15s" },
-  { top: "78%", left: "8%", size: 6, delay: "0.3s" },
-  { top: "82%", left: "90%", size: 8, delay: "0.45s" },
-  { top: "4%", left: "55%", size: 5, delay: "0.6s" },
-  { top: "88%", left: "50%", size: 6, delay: "0.75s" },
-];
-
 const WelcomePromotionModal = ({
   open,
   onContinue,
-  spotCount = 300,
-  trialEndAt,
-  platformName = "BookMe",
 }: WelcomePromotionModalProps) => {
-  const trialLengthLabel = formatTrialLength(trialEndAt);
   return (
     <DialogPrimitive.Root open={open}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
-          className="fixed inset-0 z-[100] bg-navy/70 backdrop-blur-sm data-[state=open]:animate-fade-in"
+          className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm data-[state=open]:animate-fade-in"
         />
         <DialogPrimitive.Content
           onOpenAutoFocus={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
-          className="fixed left-1/2 top-1/2 z-[101] w-[92vw] max-w-[400px] -translate-x-1/2 -translate-y-1/2 outline-none sm:max-w-[420px]"
+          className="fixed left-1/2 top-1/2 z-[101] w-[90vw] max-w-[370px] -translate-x-1/2 -translate-y-1/2 outline-none sm:max-w-[400px]"
         >
           <DialogPrimitive.Title className="sr-only">
-            Welcome founding-business offer
+            Welcome to BookMe
           </DialogPrimitive.Title>
           <DialogPrimitive.Description className="sr-only">
-            You are one of the first {spotCount} businesses on {platformName}. Enjoy{" "}
-            {trialLengthLabel.toLowerCase()} access, no card required.
+            Your business is now listed on BookMe for FREE. Enjoy Premium benefits FREE for your first 2 months. No card. No payment required.
           </DialogPrimitive.Description>
 
-          <div className="relative overflow-hidden rounded-[28px] bg-white shadow-[0_24px_70px_-15px_rgba(4,10,30,0.55)] animate-welcome-pop">
-            {/* Decorative navy header panel */}
-            <div className="relative bg-gradient-to-br from-[hsl(220,100%,12%)] via-[hsl(220,90%,16%)] to-[hsl(220,100%,9%)] px-6 pt-8 pb-14 text-center">
-              {/* sparkles */}
-              {SPARKLE_POSITIONS.map((s, i) => (
-                <span
-                  key={i}
-                  className="absolute rounded-full bg-amber-300 animate-sparkle-pop"
-                  style={{
-                    top: s.top,
-                    left: s.left,
-                    width: s.size,
-                    height: s.size,
-                    animationDelay: s.delay,
-                    boxShadow: "0 0 8px 2px rgba(252,211,77,0.55)",
-                  }}
-                />
-              ))}
+          <div className="relative overflow-hidden rounded-[26px] bg-white p-6 sm:p-7 shadow-[0_20px_50px_rgba(0,0,0,0.25)] animate-scale-in">
+            {/* Top Party Popper Icon Badge */}
+            <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[#EBF4FF]">
+              <div className="relative flex items-center justify-center">
+                <svg
+                  viewBox="0 0 64 64"
+                  className="h-12 w-12"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  {/* Confetti Specks & Streamers */}
+                  <circle cx="20" cy="18" r="2.5" fill="#EF4444" />
+                  <circle cx="28" cy="12" r="2" fill="#3B82F6" />
+                  <circle cx="38" cy="14" r="2.5" fill="#10B981" />
+                  <circle cx="44" cy="22" r="2" fill="#F59E0B" />
+                  <circle cx="16" cy="28" r="1.5" fill="#F59E0B" />
+                  <circle cx="48" cy="14" r="1.5" fill="#EF4444" />
 
-              <div className="relative mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/25 backdrop-blur-sm">
-                <img src={logo} alt={platformName} className="h-10 w-10 rounded-xl object-cover" />
+                  <path d="M22 24L18 20" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M34 18L36 12" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M42 26L48 24" stroke="#10B981" strokeWidth="2" strokeLinecap="round" />
+
+                  {/* Party Popper Cone */}
+                  <path
+                    d="M18 46L30 34L44 48L32 60L18 46Z"
+                    fill="#F59E0B"
+                  />
+                  <path
+                    d="M18 46L34 18L46 30L30 46H18Z"
+                    fill="#FBBF24"
+                  />
+                  {/* Horn stripes */}
+                  <path
+                    d="M24 38L32 26"
+                    stroke="#3B82F6"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M28 42L38 32"
+                    stroke="#EF4444"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </svg>
               </div>
-
-              <div className="relative mx-auto mb-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-300 via-amber-400 to-amber-300 bg-[length:200%_auto] px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-navy shadow-sm animate-shimmer">
-                <Sparkles className="h-3 w-3" />
-                Founding Business Reward
-              </div>
-
-              <h2 className="relative text-2xl font-extrabold leading-tight text-white">
-                Welcome to {platformName} 🎉
-              </h2>
             </div>
 
-            {/* Card body — overlaps header slightly for depth */}
-            <div className="relative -mt-8 rounded-t-[26px] bg-white px-6 pb-6 pt-6">
-              <p className="text-center text-[15px] leading-relaxed text-foreground/80">
-                You&apos;re one of the first{" "}
-                <span className="font-bold text-navy">{spotCount}</span> businesses on{" "}
-                <span className="font-semibold text-navy">{platformName}</span> — and that comes
-                with a reward.
-              </p>
+            {/* Title & Accent Divider */}
+            <h2 className="text-center text-2xl font-bold text-[#0F172A] tracking-tight">
+              Welcome to BookMe <span className="inline-block">🎉</span>
+            </h2>
+            <div className="mx-auto my-3.5 h-[3px] w-10 rounded-full bg-[#CBDCF7]" />
 
-              <div className="my-5 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-amber-50 p-4 text-center">
-                <p className="text-xs font-semibold uppercase tracking-wider text-amber-600">
-                  Your welcome gift
-                </p>
-                <p className="mt-1 text-3xl font-extrabold text-navy">
-                  {trialLengthLabel}
-                </p>
-                <p className="mt-1 text-sm font-medium text-muted-foreground">
-                  Full access to every {platformName} Business feature
+            {/* Benefit Items */}
+            <div className="divide-y divide-gray-100/90 text-left">
+              {/* Item 1 */}
+              <div className="flex items-center gap-3.5 py-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0066FF] text-white shadow-sm">
+                  <Store className="h-5 w-5" />
+                </div>
+                <p className="text-sm font-medium leading-snug text-slate-700">
+                  Your business is now listed on BookMe for{" "}
+                  <span className="font-bold text-[#0066FF]">FREE</span>.
                 </p>
               </div>
 
-              <div className="mb-6 flex items-center justify-center gap-5 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="h-3.5 w-3.5 text-success" />
-                  No card required
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <Rocket className="h-3.5 w-3.5 text-success" />
-                  No payment now
-                </span>
+              {/* Item 2 */}
+              <div className="flex items-center gap-3.5 py-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FFB800] text-white shadow-sm">
+                  <Crown className="h-5 w-5 fill-current" />
+                </div>
+                <p className="text-sm font-medium leading-snug text-slate-700">
+                  Enjoy Premium benefits{" "}
+                  <span className="font-bold text-[#0066FF]">FREE</span> for your first 2 months.
+                </p>
               </div>
 
-              <button
-                type="button"
-                onClick={onContinue}
-                className="tap-scale w-full rounded-2xl py-4 text-base font-semibold text-white transition-transform"
-                style={{
-                  background: "linear-gradient(145deg, hsl(220 80% 16%), hsl(220 100% 8%))",
-                  boxShadow: "5px 5px 12px #0a1020, -5px -5px 12px #182848",
-                }}
-              >
-                Continue
-              </button>
-
-              <p className="mt-3 text-center text-[11px] text-muted-foreground/70">
-                Offer reserved for the first {spotCount} businesses that join {platformName}.
-              </p>
+              {/* Item 3 */}
+              <div className="flex items-center gap-3.5 py-3.5">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#10B981] text-white shadow-sm">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5 stroke-current fill-none"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <rect x="2" y="5" width="20" height="14" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                    <line x1="3" y1="21" x2="21" y2="3" strokeWidth="2.5" />
+                  </svg>
+                </div>
+                <p className="text-sm font-medium leading-snug text-slate-700">
+                  <span className="font-bold text-slate-900">No card.</span>{" "}
+                  <span className="font-bold text-slate-900">No payment required.</span>
+                </p>
+              </div>
             </div>
+
+            {/* CTA Button */}
+            <button
+              type="button"
+              onClick={onContinue}
+              className="mt-5 w-full rounded-2xl bg-[#0066FF] py-3.5 text-center text-base font-semibold text-white shadow-md transition-all hover:bg-[#0052CC] active:scale-[0.98] focus:outline-none focus:ring-2 focus:ring-[#0066FF]/50"
+            >
+              Continue
+            </button>
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

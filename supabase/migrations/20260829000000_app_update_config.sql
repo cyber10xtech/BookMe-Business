@@ -42,8 +42,8 @@ CREATE TRIGGER update_app_update_config_updated_at
 -- Seed Data (Idempotent using UPSERT)
 INSERT INTO public.app_update_config (app, platform, latest_version, minimum_supported_version, store_url)
 VALUES 
-    ('customer', 'ios', '1.0', '1.0', 'https://apps.apple.com/us/app/bookme-book-a-service/id6782405521'),
-    ('customer', 'android', '11.9.3', '11.9.3', 'https://play.google.com/store/apps/details?id=com.bookmebusiness.customerapp1'),
+    ('customer', 'ios', '12.0.0', '11.9.5', 'https://apps.apple.com/us/app/bookme-book-a-service/id6782405521'),
+    ('customer', 'android', '12.0.0', '11.9.5', 'https://play.google.com/store/apps/details?id=com.bookmebusiness.customerapp1'),
     ('business', 'ios', '1.3', '1.3', 'https://apps.apple.com/us/app/bookme-business/id6762440255'),
     ('business', 'android', '11.8.1', '11.8.1', 'https://play.google.com/store/apps/details?hl=en&id=com.bookmebusiness.bookmeapp')
 ON CONFLICT (app, platform) 
