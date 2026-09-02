@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { CATEGORIES } from "@/lib/categories";
 import { useProfileCompletion, COMPLETION_THRESHOLD } from "@/hooks/useProfileCompletion";
 import { useServices } from "@/hooks/useServices";
+import StateLgaSelector from "@/components/common/StateLgaSelector";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -278,14 +279,14 @@ const EditProfilePage = () => {
             <Label className="text-xs font-semibold text-muted-foreground uppercase">Address</Label>
             <Input value={form.address} onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))} className="mt-1 h-12 rounded-xl bg-secondary border-0" />
           </div>
-          <div>
-            <Label className="text-xs font-semibold text-muted-foreground uppercase">City</Label>
-            <Input value={form.city} onChange={(e) => setForm((p) => ({ ...p, city: e.target.value }))} className="mt-1 h-12 rounded-xl bg-secondary border-0" />
-          </div>
-          <div>
-            <Label className="text-xs font-semibold text-muted-foreground uppercase">State</Label>
-            <Input value={form.state} onChange={(e) => setForm((p) => ({ ...p, state: e.target.value }))} className="mt-1 h-12 rounded-xl bg-secondary border-0" />
-          </div>
+          <StateLgaSelector
+            stateValue={form.state}
+            lgaValue={form.city}
+            onStateChange={(state) => setForm((p) => ({ ...p, state }))}
+            onLgaChange={(city) => setForm((p) => ({ ...p, city }))}
+            stateLabel="State"
+            lgaLabel="City / LGA"
+          />
         </div>
 
         <div className="bg-card rounded-2xl p-5 border border-border">

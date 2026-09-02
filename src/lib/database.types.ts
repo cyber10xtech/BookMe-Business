@@ -7,7 +7,7 @@ export type DeliveryMode = "at_shop" | "at_home" | "online";
 export type UserRole = "customer" | "provider" | "admin";
 export type DocumentType = "nin" | "cac" | "business_permit" | "other";
 export type DocumentStatus = "pending" | "approved" | "rejected";
-export type NotificationType = "booking_accepted" | "booking_rejected" | "booking_completed" | "booking_rescheduled" | "booking_reminder" | "new_message" | "new_booking" | "info" | "new_review" | "promotion";
+export type NotificationType = "booking_accepted" | "booking_rejected" | "booking_completed" | "booking_cancelled" | "booking_rescheduled" | "booking_reminder" | "new_message" | "new_booking" | "info" | "new_review" | "promotion";
 
 export interface Profile {
   id: string;

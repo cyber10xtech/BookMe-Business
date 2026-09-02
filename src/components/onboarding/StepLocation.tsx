@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import StateLgaSelector from "../common/StateLgaSelector";
 
 interface StepLocationProps {
   data: { address: string; city: string; state: string };
@@ -53,24 +54,16 @@ const StepLocation = ({ data, onChange, onNext, onBack }: StepLocationProps) => 
             className="mt-1.5 h-12 rounded-xl bg-secondary border-0"
           />
         </div>
-        <div>
-          <Label className="text-sm font-semibold text-foreground">City</Label>
-          <Input
-            placeholder="City"
-            value={data.city}
-            onChange={(e) => onChange({ city: e.target.value })}
-            className="mt-1.5 h-12 rounded-xl bg-secondary border-0"
-          />
-        </div>
-        <div>
-          <Label className="text-sm font-semibold text-foreground">State</Label>
-          <Input
-            placeholder="State"
-            value={data.state}
-            onChange={(e) => onChange({ state: e.target.value })}
-            className="mt-1.5 h-12 rounded-xl bg-secondary border-0"
-          />
-        </div>
+
+        <StateLgaSelector
+          stateValue={data.state}
+          lgaValue={data.city}
+          onStateChange={(state) => onChange({ state })}
+          onLgaChange={(city) => onChange({ city })}
+          stateLabel="State"
+          lgaLabel="City / LGA"
+          required
+        />
       </div>
 
       <Button

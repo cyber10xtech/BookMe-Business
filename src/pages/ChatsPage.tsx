@@ -11,7 +11,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { MessageSquare, Search, Users, UserPlus } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import AppLayout from "@/components/layout/AppLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
@@ -69,6 +69,7 @@ const initials    = (name: string) => name.split(" ").map(n => n[0]).join("").to
 const ChatsPage = () => {
   const { user }   = useAuth();
   const navigate   = useNavigate();
+  const location   = useLocation();
 
   const [tab, setTab]               = useState<"messages" | "clients">("messages");
   const [conversations, setConvs]   = useState<Conversation[]>([]);
@@ -203,6 +204,24 @@ const ChatsPage = () => {
 
   useEffect(() => { loadConvs(); }, [loadConvs]);
   useEffect(() => { loadChatableClients(); }, [loadChatableClients]);
+
+  // ── Auto-open chat from external link ─────────────────────────────────────
+  useEffect(() => {
+    if (location.state?.openForCustomerId && conversations.length > 0) {
+      const cid = location.state.openForCustomerId;
+      const existing = conversations.find(c => c.customer_id === cid);
+      if (existing) {
+        setActive({ convId: existing.id, name: existing.other_name, avatar: existing.other_avatar, canMessage: existing.can_message });
+        navigate("/chats", { replace: true, state: {} });
+      } else if (chatableClients.length > 0) {
+        const client = chatableClients.find(c => c.customer_profile_id === cid);
+        if (client) {
+          openChat(client);
+          navigate("/chats", { replace: true, state: {} });
+        }
+      }
+    }
+  }, [location.state, conversations, chatableClients, navigate]);
 
   // ── Realtime ──────────────────────────────────────────────────────────────
 

@@ -92,16 +92,24 @@ export const useBookings = () => {
     return () => { supabase.removeChannel(ch); };
   }, [profile, fetchBookings]);
 
-  const updateBookingStatus = async (id: string, action: string) => {
+  const updateBookingStatus = async (id: string, action: string, reason?: string) => {
     if (!user || !profile) return;
 
     const dbStatus = STATUS_MAP[action] ?? action;
+    const updateData: any = { status: dbStatus, updated_at: new Date().toISOString() };
+    
+    if (dbStatus === "cancelled" || dbStatus === "rejected") {
+      updateData.cancellation_reason = reason || null;
+      updateData.cancelled_by_role = "business";
+      updateData.cancelled_at = new Date().toISOString();
+    }
 
     const { error } = await supabase
       .from("bookings")
-      .update({ status: dbStatus, updated_at: new Date().toISOString() } as any)
+      .update(updateData)
       .eq("id", id)
-      .eq("provider_id", profile.id);
+      .eq("provider_id", profile.id)
+      .in("status", ["pending", "confirmed", "accepted", "rescheduled"]);
 
     if (error) { console.error("[Booking] update:", error); return; }
 
@@ -116,7 +124,7 @@ export const useBookings = () => {
       };
       const bodies: Record<string, string> = {
         confirmed:   `Your booking for ${booking.service_name || "a service"} has been confirmed by ${profile.business_name || "the provider"}.`,
-        cancelled:   `Your booking for ${booking.service_name || "a service"} has been cancelled.`,
+        cancelled:   `Your booking for ${booking.service_name || "a service"} has been cancelled. ${reason ? "Reason: "+reason : ""}`,
         completed:   `${booking.service_name || "Your service"} is complete. Please leave a review!`,
         rescheduled: `Your booking for ${booking.service_name || "a service"} has been rescheduled.`,
       };
@@ -149,6 +157,32 @@ export const useBookings = () => {
     await fetchBookings();
   };
 
+  const rescheduleBooking = async (id: string, date: string, time: string, note: string) => {
+    if (!user || !profile || !date || !time || !note.trim()) return false;
+    const booking = bookings.find(b => b.id === id);
+    if (!booking) return false;
+    const { data: conflict } = await supabase.from("bookings").select("id")
+      .eq("provider_id", profile.id).eq("booking_date", date).eq("booking_time", time)
+      .not("status", "in", "(cancelled,rejected)").neq("id", id).limit(1);
+    if (conflict?.length) { console.error("[Booking] reschedule conflict"); return false; }
+    const notes = [booking.notes, `Reschedule note: ${note.trim()}`].filter(Boolean).join("\n");
+    const { data: updated, error } = await supabase.from("bookings").update({
+      booking_date: date, booking_time: time, booking_time_text: time,
+      notes, status: "rescheduled", updated_at: new Date().toISOString(),
+    } as any).eq("id", id).eq("provider_id", profile.id)
+      .in("status", ["pending", "confirmed", "accepted", "rescheduled"]).select("id");
+    if (error || !updated?.length) { console.error("[Booking] reschedule:", error); return false; }
+    const body = `${booking.service_name || "Your booking"} moved to ${date} at ${time}. Reason: ${note.trim()}.`;
+    await supabase.from("notifications").insert({
+      user_id: booking.customer_id, title: "Booking Rescheduled", body,
+      type: "booking_rescheduled", related_booking_id: id,
+      related_provider_id: profile.id, data: { booking_id: id, type: "booking_rescheduled" }, is_read: false,
+    } as any);
+    void supabase.functions.invoke("send-notification", { body: { user_id: booking.customer_id, title: "Booking Rescheduled", message: body, type: "booking_rescheduled", related_booking_id: id } });
+    await fetchBookings();
+    return true;
+  };
+
   // Client-side safety net: as soon as this dashboard loads a booking that
   // has already passed its date/time, flip it to "completed" immediately
   // instead of waiting for the next tick. The authoritative mechanism is
@@ -177,7 +211,7 @@ export const useBookings = () => {
   const revenue = completedBookings.reduce((s, b) => s + (b.total_price || b.service_price || 0), 0);
 
   return {
-    bookings, loading, fetchBookings, updateBookingStatus,
+    bookings, loading, fetchBookings, updateBookingStatus, rescheduleBooking,
     stats: {
       todayCount:     todayBookings.length,
       pendingCount:   pendingBookings.length,

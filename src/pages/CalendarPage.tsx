@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, CheckCircle, XCircle, CheckCircle2, Clock, M
 import AppLayout from "@/components/layout/AppLayout";
 import { useBookings, type EnrichedBooking } from "@/hooks/useBookings";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 const WEEKDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 
@@ -30,11 +31,20 @@ const Avatar = ({ url, name, size = "md" }: { url?: string|null; name?: string|n
       </div>;
 };
 
-const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, accepting }: {
+const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, onReschedule, accepting, rescheduling, navigate }: {
   booking: EnrichedBooking; onClose: () => void;
-  onAccept: (id: string) => Promise<void>; onReject: (id: string) => Promise<void>;
+  onAccept: (id: string) => Promise<void>; onReject: (id: string, reason: string) => Promise<void>;
   onComplete: (id: string) => Promise<void>; accepting: string|null;
+  onReschedule: (id: string, date: string, time: string, note: string) => Promise<void>; rescheduling: boolean;
+  navigate: ReturnType<typeof useNavigate>;
 }) => {
+  const [showRejectConfirm, setShowRejectConfirm] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [showReschedule, setShowReschedule] = useState(false);
+  const [newDate, setNewDate] = useState(booking.booking_date);
+  const [newTime, setNewTime] = useState(String(booking.booking_time || "").slice(0, 5));
+  const [rescheduleNote, setRescheduleNote] = useState("");
+
   const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-NG", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
   const accentGrad: Record<string, string> = {
     pending: "linear-gradient(135deg,#f59e0b,#d97706)", confirmed: "linear-gradient(135deg,#22c55e,#16a34a)",
@@ -85,17 +95,31 @@ const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, accept
               </div>
             </div>
           </div>
-          {(booking.customer_phone || booking.customer_phone_from_profile) && (
-            <a href={`tel:${booking.customer_phone || booking.customer_phone_from_profile}`}
-              className="flex items-center gap-3 rounded-3xl p-4 tap-scale"
-              style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
-                <Phone className="w-4 h-4 text-primary" />
+          
+          <div className="rounded-3xl p-4 space-y-3"
+            style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase">Customer Contact</p>
+            <button onClick={() => navigate("/chats", { state: { openForCustomerId: booking.customer_id } })}
+              className="w-full flex items-center gap-3 tap-scale">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+                style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
+                <MessageSquare className="w-4 h-4 text-primary" />
               </div>
-              <p className="text-sm font-bold flex-1">{booking.customer_phone || booking.customer_phone_from_profile}</p>
-              <span className="text-xs font-bold text-primary px-2 py-1 rounded-xl" style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>Call</span>
-            </a>
-          )}
+              <p className="text-sm font-bold text-foreground flex-1 text-left">Message in App</p>
+              <span className="text-xs font-bold text-primary px-2 py-1 rounded-xl"
+                style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>Chat</span>
+            </button>
+            {(booking.customer_phone || booking.customer_phone_from_profile) && (
+              <a href={`tel:${booking.customer_phone || booking.customer_phone_from_profile}`}
+                className="flex items-center gap-3 tap-scale">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
+                  <Phone className="w-4 h-4 text-primary" />
+                </div>
+                <p className="text-sm font-bold flex-1">{booking.customer_phone || booking.customer_phone_from_profile}</p>
+                <span className="text-xs font-bold text-primary px-2 py-1 rounded-xl" style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>Call</span>
+              </a>
+            )}
+          </div>
           {booking.notes && (
             <div className="rounded-3xl p-4" style={{ background: "hsl(38 100% 97%)", border: "1px solid hsl(38 92% 80%)" }}>
               <p className="text-[10px] font-bold text-amber-700 uppercase mb-1">Note</p>
@@ -104,7 +128,7 @@ const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, accept
           )}
         </div>
         <div className="px-4 pt-3 space-y-2" style={{ borderTop: "1px solid hsl(var(--border))", background: "hsl(var(--background))", paddingBottom: "calc(env(safe-area-inset-bottom) + 1rem)" }}>
-          {booking.status === "pending" && (
+          {booking.status === "pending" && !showRejectConfirm && (
             <div className="flex gap-3">
               <button onClick={() => onAccept(booking.id)} disabled={accepting === booking.id}
                 className="flex-1 h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-50 tap-scale"
@@ -112,19 +136,67 @@ const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, accept
                 {accepting === booking.id ? <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle className="w-5 h-5" />}
                 {accepting === booking.id ? "…" : "Accept"}
               </button>
-              <button onClick={() => onReject(booking.id)}
+              <button onClick={() => setShowRejectConfirm(true)}
                 className="flex-1 h-12 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 tap-scale"
                 style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)", color: "hsl(0 84% 55%)", border: "1.5px solid hsl(0 84% 70%)" }}>
                 <XCircle className="w-5 h-5" /> Decline
               </button>
             </div>
           )}
-          {(booking.status === "confirmed" || booking.status === "accepted") && (
-            <button onClick={() => onComplete(booking.id)}
-              className="w-full h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 tap-scale"
-              style={{ background: "linear-gradient(145deg, hsl(220 80% 16%), hsl(220 100% 8%))", boxShadow: "var(--shadow-navy)" }}>
-              <CheckCircle2 className="w-5 h-5" /> Mark as Completed
+          {(booking.status === "confirmed" || booking.status === "accepted") && !showRejectConfirm && (
+            <>
+              <button onClick={() => onComplete(booking.id)}
+                className="w-full h-12 rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 tap-scale"
+                style={{ background: "linear-gradient(145deg, hsl(220 80% 16%), hsl(220 100% 8%))", boxShadow: "var(--shadow-navy)" }}>
+                <CheckCircle2 className="w-5 h-5" /> Mark as Completed
+              </button>
+              <button onClick={() => setShowRejectConfirm(true)}
+                className="w-full h-12 mt-2 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 tap-scale"
+                style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)", color: "hsl(0 84% 55%)", border: "1.5px solid hsl(0 84% 70%)" }}>
+                <XCircle className="w-5 h-5" /> Cancel Booking
+              </button>
+            </>
+          )}
+
+          {["pending", "confirmed", "accepted", "rescheduled"].includes(booking.status) && !showRejectConfirm && !showReschedule && (
+            <button onClick={() => setShowReschedule(true)} className="w-full h-12 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 tap-scale" style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)", color: "hsl(var(--primary))" }}>
+              <Calendar className="w-5 h-5" /> Reschedule Booking
             </button>
+          )}
+          {showReschedule && (
+            <div className="space-y-3 rounded-2xl p-3" style={{ background: "hsl(var(--muted))" }}>
+              <div className="grid grid-cols-2 gap-2"><input type="date" min={new Date().toISOString().split("T")[0]} value={newDate} onChange={e => setNewDate(e.target.value)} className="h-11 rounded-xl bg-background px-3 text-sm" /><input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} className="h-11 rounded-xl bg-background px-3 text-sm" /></div>
+              <textarea value={rescheduleNote} onChange={e => setRescheduleNote(e.target.value)} placeholder="Why are you rescheduling? (Required)" rows={2} className="w-full rounded-xl bg-background p-3 text-sm resize-none outline-none focus:ring-2 focus:ring-primary" />
+              <div className="flex gap-2"><button onClick={() => setShowReschedule(false)} className="flex-1 h-11 rounded-xl font-bold" style={{ boxShadow: "var(--shadow-raised)" }}>Keep Date</button><button onClick={() => onReschedule(booking.id, newDate, newTime, rescheduleNote)} disabled={rescheduling || !newDate || !newTime || !rescheduleNote.trim()} className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-60">{rescheduling ? "Checking…" : "Confirm"}</button></div>
+            </div>
+          )}
+
+          {showRejectConfirm && (
+            <div className="space-y-3">
+              <p className="text-xs font-bold text-red-600">Are you sure? This cannot be undone.</p>
+              <textarea
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder="Why are you declining/cancelling? (Required)"
+                className="w-full rounded-2xl bg-muted p-3 text-sm resize-none outline-none focus:ring-2 focus:ring-primary"
+                rows={3}
+              />
+              <div className="flex gap-2">
+                <button onClick={() => { setShowRejectConfirm(false); setRejectReason(""); }}
+                  className="flex-1 h-11 rounded-2xl text-sm font-bold tap-scale"
+                  style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)", color: "hsl(var(--foreground))" }}>
+                  Keep Booking
+                </button>
+                <button 
+                  onClick={() => onReject(booking.id, rejectReason)} 
+                  disabled={!rejectReason.trim()}
+                  className="flex-1 h-11 rounded-2xl text-white text-sm font-bold flex items-center justify-center gap-1.5 disabled:opacity-60 tap-scale"
+                  style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)", boxShadow: "3px 3px 10px rgba(239,68,68,0.35)" }}>
+                  <XCircle className="w-4 h-4" />
+                  Confirm
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -133,11 +205,12 @@ const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, accept
 };
 
 const CalendarPage = () => {
-  const { bookings, updateBookingStatus } = useBookings();
+  const { bookings, updateBookingStatus, rescheduleBooking } = useBookings();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedBooking, setSelectedBooking] = useState<EnrichedBooking|null>(null);
   const [accepting, setAccepting] = useState<string|null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
 
   const year  = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -161,8 +234,15 @@ const CalendarPage = () => {
   const selectedBookings = (byDate[selectedDate] || []).sort((a, b) => a.booking_time > b.booking_time ? 1 : -1);
 
   const handleAccept = useCallback(async (id: string) => { setAccepting(id); await updateBookingStatus(id, "accepted"); toast.success("Confirmed ✅"); setAccepting(null); setSelectedBooking(null); }, [updateBookingStatus]);
-  const handleReject = useCallback(async (id: string) => { await updateBookingStatus(id, "rejected"); toast.info("Declined."); setSelectedBooking(null); }, [updateBookingStatus]);
+  const handleReject = useCallback(async (id: string, reason: string) => { await updateBookingStatus(id, "rejected", reason); toast.info("Declined."); setSelectedBooking(null); }, [updateBookingStatus]);
   const handleComplete = useCallback(async (id: string) => { await updateBookingStatus(id, "completed"); toast.success("Completed 🎉"); setSelectedBooking(null); }, [updateBookingStatus]);
+  const handleReschedule = useCallback(async (id: string, date: string, time: string, note: string) => {
+    setRescheduling(true);
+    const ok = await rescheduleBooking(id, date, time, note);
+    toast[ok ? "success" : "error"](ok ? "Booking rescheduled." : "That time is unavailable or the booking changed.");
+    if (ok) setSelectedBooking(null);
+    setRescheduling(false);
+  }, [rescheduleBooking]);
 
   const monthStats = {
     total:     bookings.filter(b => b.booking_date.startsWith(monthStr)).length,
@@ -180,11 +260,13 @@ const CalendarPage = () => {
 
   const accentColor: Record<string, string> = { pending: "#f59e0b", confirmed: "#22c55e", accepted: "#22c55e", completed: "#3b82f6", cancelled: "#ef4444", rejected: "#ef4444" };
 
+  const navigate = useNavigate();
+
   return (
     <AppLayout>
       {selectedBooking && (
         <BookingSheet booking={selectedBooking} onClose={() => setSelectedBooking(null)}
-          onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} accepting={accepting} />
+          onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} onReschedule={handleReschedule} accepting={accepting} rescheduling={rescheduling} navigate={navigate} />
       )}
 
       <div className="px-5 pt-5 pb-8">
@@ -340,7 +422,7 @@ const CalendarPage = () => {
                             {accepting === b.id ? <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CheckCircle className="w-3.5 h-3.5" />}
                             {accepting === b.id ? "…" : "Accept"}
                           </button>
-                          <button onClick={() => handleReject(b.id)}
+                          <button onClick={() => setSelectedBooking(b)}
                             className="flex-1 h-9 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 tap-scale"
                             style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)", color: "#ef4444", border: "1.5px solid hsl(0 84% 80%)" }}>
                             <XCircle className="w-3.5 h-3.5" /> Decline
