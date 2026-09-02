@@ -67,7 +67,7 @@ const BookingLocation = ({ value }: { value?: string | null }) => {
   return <>{location}</>;
 };
 
-const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, onReschedule, accepting, rescheduling, navigate }: {
+export const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, onReschedule, accepting, rescheduling, navigate }: {
   booking: EnrichedBooking; onClose: () => void;
   onAccept: (id: string) => Promise<void>; onReject: (id: string, reason: string) => Promise<void>;
   onComplete: (id: string) => Promise<void>; accepting: string|null;
@@ -80,6 +80,38 @@ const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, onResc
   const [newDate, setNewDate] = useState(booking.booking_date);
   const [newTime, setNewTime] = useState(String(booking.booking_time || "").slice(0, 5));
   const [rescheduleNote, setRescheduleNote] = useState("");
+
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [editedPrice, setEditedPrice] = useState(String(booking.total_price || booking.service_price || 0));
+  const [savingPrice, setSavingPrice] = useState(false);
+
+  const handleSavePrice = async () => {
+    const val = parseFloat(editedPrice);
+    if (isNaN(val) || val < 0) {
+      toast.error("Please enter a valid amount.");
+      return;
+    }
+    setSavingPrice(true);
+    const { error } = await supabase
+      .from("bookings")
+      .update({
+        total_price: val,
+        price: val,
+        service_price: val,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", booking.id);
+
+    setSavingPrice(false);
+    if (error) {
+      toast.error("Failed to update price: " + error.message);
+    } else {
+      toast.success(`Booking price updated to ${fmt(val)}`);
+      booking.total_price = val;
+      booking.service_price = val;
+      setIsEditingPrice(false);
+    }
+  };
 
   const fmtDate = (d: string) => new Date(d + "T00:00:00").toLocaleDateString("en-NG",
     { weekday: "long", month: "long", day: "numeric", year: "numeric" });
@@ -151,8 +183,46 @@ const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, onResc
                 <p className="text-sm font-bold text-foreground">{booking.service_name || "—"}</p>
               </div>
               <div className="text-right">
-                <p className="text-[10px] text-muted-foreground font-bold uppercase mb-0.5">Amount</p>
-                <p className="text-xl font-extrabold text-primary">{fmt(booking.total_price || booking.service_price || 0)}</p>
+                <div className="flex items-center justify-end gap-1">
+                  <p className="text-[10px] text-muted-foreground font-bold uppercase">Amount</p>
+                  {!isEditingPrice && (
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingPrice(true)}
+                      className="text-[10px] text-primary font-bold hover:underline"
+                    >
+                      (Edit)
+                    </button>
+                  )}
+                </div>
+                {!isEditingPrice ? (
+                  <p className="text-xl font-extrabold text-primary">{fmt(booking.total_price || booking.service_price || 0)}</p>
+                ) : (
+                  <div className="flex items-center gap-1 mt-1">
+                    <span className="text-sm font-bold text-foreground">₦</span>
+                    <input
+                      type="number"
+                      value={editedPrice}
+                      onChange={(e) => setEditedPrice(e.target.value)}
+                      className="w-24 h-8 px-2 rounded-lg bg-secondary text-foreground text-sm font-bold outline-none border border-primary"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSavePrice}
+                      disabled={savingPrice}
+                      className="px-2 py-1 rounded-lg bg-primary text-primary-foreground text-xs font-bold"
+                    >
+                      {savingPrice ? "..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingPrice(false)}
+                      className="px-1.5 py-1 text-xs text-muted-foreground"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-1.5 mt-2 pt-2"

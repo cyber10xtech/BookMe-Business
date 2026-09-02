@@ -314,7 +314,7 @@ const ClientsPage = () => {
         .map(b => {
           const same = bks.filter(x => (b.customer_id ? x.customer_id === b.customer_id : x.customer_name === b.customer_name));
           const last = same.map(x => x.booking_date).sort().reverse()[0] || null;
-          const totalSpend = same.reduce((s, x) => s + (x.total_price || 0), 0);
+          const totalSpend = same.filter(x => x.status === "completed").reduce((s, x) => s + (x.total_price || 0), 0);
           const latestCompleted = same.filter(x => x.status === "completed").sort((a, b) => b.booking_date?.localeCompare(a.booking_date || "") || 0)[0];
           const prof = b.customer_id ? profileMap[b.customer_id] : undefined;
           return {

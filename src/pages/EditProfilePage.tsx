@@ -13,6 +13,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { useProfileCompletion, COMPLETION_THRESHOLD } from "@/hooks/useProfileCompletion";
 import { useServices } from "@/hooks/useServices";
 import StateLgaSelector from "@/components/common/StateLgaSelector";
+import PhoneInput from "@/components/PhoneInput";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -261,8 +262,11 @@ const EditProfilePage = () => {
             <Input value={form.owner_name} onChange={(e) => setForm((p) => ({ ...p, owner_name: e.target.value }))} className="mt-1 h-12 rounded-xl bg-secondary border-0" />
           </div>
           <div>
-            <Label className="text-xs font-semibold text-muted-foreground uppercase">Phone</Label>
-            <Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} className="mt-1 h-12 rounded-xl bg-secondary border-0" />
+            <Label className="text-xs font-semibold text-muted-foreground uppercase mb-1.5 block">Phone</Label>
+            <PhoneInput
+              value={form.phone}
+              onChange={(fullVal) => setForm((p) => ({ ...p, phone: fullVal }))}
+            />
           </div>
           <div>
             <Label className="text-xs font-semibold text-muted-foreground uppercase">Bio</Label>

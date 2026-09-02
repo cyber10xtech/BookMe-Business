@@ -11,6 +11,8 @@ import { syncStatusBar } from "@/lib/statusBar";
 import React, { Suspense, lazy } from "react";
 import logo from "@/assets/logo.jpg";
 import { UpdateDialog } from "@/components/UpdateDialog";
+import DeactivatedScreen from "@/components/DeactivatedScreen";
+import { supabase } from "@/lib/supabase";
 
 const SignIn = lazy(() => import("./pages/SignIn"));
 const Register = lazy(() => import("./pages/Register"));
@@ -51,9 +53,31 @@ const RootRedirect = () => {
 };
 
 const AppInner = () => {
-  // Configure the iOS/Android status bar once on mount:
-  // overlay=true lets the web content extend behind the status bar (edge-to-edge).
+  const { user } = useAuth();
+  const [isDeactivated, setIsDeactivated] = React.useState(false);
+
+  // Configure status bar once on mount
   useEffect(() => { syncStatusBar(false); }, []);
+
+  // Check if profile is active
+  useEffect(() => {
+    if (!user) {
+      setIsDeactivated(false);
+      return;
+    }
+    supabase
+      .from("profiles")
+      .select("is_active")
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => {
+        setIsDeactivated(data?.is_active === false);
+      });
+  }, [user]);
+
+  if (user && isDeactivated) {
+    return <DeactivatedScreen onSignOut={() => setIsDeactivated(false)} />;
+  }
 
   return (
   <>

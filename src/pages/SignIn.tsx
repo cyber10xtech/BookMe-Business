@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { Mail, Eye, EyeOff, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Mail, ArrowRight, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import logo from "@/assets/logo.jpg";
@@ -13,7 +13,6 @@ const SignIn = () => {
   const { user, loading } = useAuth();
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
-  const [showPwd, setShowPwd]     = useState(false);
   const [showPass, setShowPass]   = useState(false);
   const [keepSignedIn, setKeep]   = useState(true);   // default ON
   const [signingIn, setLoading]          = useState(false);
@@ -105,21 +104,13 @@ const SignIn = () => {
               <span className="text-muted-foreground text-xs font-bold">🔑</span>
             </div>
             <input
-              type={showPwd ? "text" : "password"}
+              type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleSignIn()}
               placeholder="••••••••"
-              className="flex-1 h-full bg-transparent px-2 text-sm text-foreground placeholder:text-muted-foreground outline-none"
+              className="flex-1 h-full bg-transparent px-4 text-sm text-foreground placeholder:text-muted-foreground outline-none"
             />
-            <button
-              onClick={() => setShowPwd(v => !v)}
-              className="w-12 h-full flex items-center justify-center flex-shrink-0 tap-scale"
-            >
-              {showPwd
-                ? <EyeOff className="w-4 h-4 text-muted-foreground" />
-                : <Eye    className="w-4 h-4 text-muted-foreground" />}
-            </button>
           </div>
           <button
             className="text-xs text-primary font-semibold mt-2 ml-1 tap-scale"

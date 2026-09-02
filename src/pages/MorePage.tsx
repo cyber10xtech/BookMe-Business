@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Lock, LogOut, FileText, Shield, MessageCircle, ChevronRight, ExternalLink, CheckCircle2, Circle, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
+import { Lock, LogOut, FileText, Shield, MessageCircle, ChevronRight, ExternalLink, CheckCircle2, Circle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,14 +30,15 @@ const MorePage = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPw, setChangingPw] = useState(false);
-  const [showNewPwd, setShowNewPwd] = useState(false);
-  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Load preferences from profile
   useEffect(() => {
     if (!profile) return;
     const notifPrefs = (profile as any).notification_preferences || {};
-    setAutoAccept(!!(notifPrefs as any).auto_accept_bookings ?? false);
+    setAutoAccept(Boolean((notifPrefs as any).auto_accept_bookings));
     setPrefs({
       bookingAlerts:         notifPrefs.push ?? true,
       bookingCancellations:  notifPrefs.booking_cancellations ?? true,
@@ -49,6 +50,24 @@ const MorePage = () => {
   const handleLogout = async () => {
     await signOut();
     navigate("/signin");
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    try {
+      const { error } = await supabase.functions.invoke("delete-own-account");
+      if (error) {
+        toast.error("Failed to delete account: " + error.message);
+        setDeleting(false);
+        return;
+      }
+      toast.success("Account deleted successfully.");
+      await signOut();
+      navigate("/signin");
+    } catch (err: any) {
+      toast.error("Account deletion failed: " + (err.message || "Unknown error"));
+      setDeleting(false);
+    }
   };
 
   const handleChangePassword = async () => {
@@ -135,13 +154,6 @@ const MorePage = () => {
           </div>
         )}
 
-        {/* ── Booking Automation — hidden until fully operational ── */}
-        {/* Uncomment when booking automation is ready:
-        <div className="bg-card rounded-2xl border border-border overflow-hidden mb-4">
-          ...
-        </div>
-        */}
-
         {/* ── Notification Preferences ── */}
         <div className="bg-card rounded-2xl border border-border overflow-hidden mb-4">
           <div className="px-5 py-3 border-b border-border">
@@ -182,13 +194,23 @@ const MorePage = () => {
             <ChevronRight className="w-5 h-5 text-muted-foreground" />
           </button>
           <button onClick={handleLogout}
-            className="w-full flex items-center gap-4 px-5 py-4 hover:bg-destructive/5 transition-colors">
-            <div className="w-11 h-11 rounded-full bg-destructive/10 flex items-center justify-center">
-              <LogOut className="w-5 h-5 text-destructive" />
+            className="w-full flex items-center gap-4 px-5 py-4 border-b border-border hover:bg-destructive/5 transition-colors">
+            <div className="w-11 h-11 rounded-full bg-secondary flex items-center justify-center">
+              <LogOut className="w-5 h-5 text-muted-foreground" />
             </div>
             <div className="flex-1 text-left">
-              <p className="font-semibold text-destructive text-sm">Log Out</p>
+              <p className="font-semibold text-foreground text-sm">Log Out</p>
               <p className="text-xs text-muted-foreground">Sign out of your account</p>
+            </div>
+          </button>
+          <button onClick={() => setDeleteDialog(true)}
+            className="w-full flex items-center gap-4 px-5 py-4 hover:bg-destructive/10 transition-colors">
+            <div className="w-11 h-11 rounded-full bg-destructive/10 flex items-center justify-center">
+              <Trash2 className="w-5 h-5 text-destructive" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="font-semibold text-destructive text-sm">Delete Account</p>
+              <p className="text-xs text-muted-foreground">Permanently remove your business profile & data</p>
             </div>
           </button>
         </div>
@@ -242,23 +264,56 @@ const MorePage = () => {
         <DialogContent className="rounded-2xl">
           <DialogHeader><DialogTitle>Change Password</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
-            <div className="relative">
-              <Input type={showNewPwd ? "text" : "password"} placeholder="New password" value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0 pr-10" />
-              <button type="button" onClick={() => setShowNewPwd(!showNewPwd)} className="absolute right-3 top-0 h-12 flex items-center justify-center text-muted-foreground tap-scale">
-                 {showNewPwd ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
-              </button>
+            <div>
+              <Input type="password" placeholder="New password" value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0 px-4" />
             </div>
-            <div className="relative">
-              <Input type={showConfirmPwd ? "text" : "password"} placeholder="Confirm new password" value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0 pr-10" />
-              <button type="button" onClick={() => setShowConfirmPwd(!showConfirmPwd)} className="absolute right-3 top-0 h-12 flex items-center justify-center text-muted-foreground tap-scale">
-                 {showConfirmPwd ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
-              </button>
+            <div>
+              <Input type="password" placeholder="Confirm new password" value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0 px-4" />
             </div>
             <Button onClick={handleChangePassword} disabled={changingPw} className="w-full h-12 rounded-xl">
               {changingPw ? "Updating..." : "Update Password"}
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <DialogContent className="rounded-2xl max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive font-bold text-lg flex items-center gap-2">
+              <Trash2 className="w-5 h-5 text-destructive" />
+              Delete Business Account?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Are you sure you want to delete your business account? This will permanently remove your profile, listed services, and associated account data.
+            </p>
+            <p className="text-xs font-semibold text-destructive">
+              This action is permanent and cannot be undone.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDeleteDialog(false)}
+                disabled={deleting}
+                className="flex-1 h-12 rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 h-12 rounded-xl font-bold"
+              >
+                {deleting ? "Deleting..." : "Delete Account"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
