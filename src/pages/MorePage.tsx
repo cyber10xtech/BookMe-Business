@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Lock, LogOut, FileText, Shield, MessageCircle, ChevronRight, ExternalLink, CheckCircle2, Circle, ChevronDown, ChevronUp } from "lucide-react";
+import { Lock, LogOut, FileText, Shield, MessageCircle, ChevronRight, ExternalLink, CheckCircle2, Circle, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,8 @@ const MorePage = () => {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPw, setChangingPw] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
 
   // Load preferences from profile
   useEffect(() => {
@@ -240,10 +242,20 @@ const MorePage = () => {
         <DialogContent className="rounded-2xl">
           <DialogHeader><DialogTitle>Change Password</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
-            <Input type="password" placeholder="New password" value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0" />
-            <Input type="password" placeholder="Confirm new password" value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0" />
+            <div className="relative">
+              <Input type={showNewPwd ? "text" : "password"} placeholder="New password" value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0 pr-10" />
+              <button type="button" onClick={() => setShowNewPwd(!showNewPwd)} className="absolute right-3 top-0 h-12 flex items-center justify-center text-muted-foreground tap-scale">
+                 {showNewPwd ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
+              </button>
+            </div>
+            <div className="relative">
+              <Input type={showConfirmPwd ? "text" : "password"} placeholder="Confirm new password" value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0 pr-10" />
+              <button type="button" onClick={() => setShowConfirmPwd(!showConfirmPwd)} className="absolute right-3 top-0 h-12 flex items-center justify-center text-muted-foreground tap-scale">
+                 {showConfirmPwd ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
+              </button>
+            </div>
             <Button onClick={handleChangePassword} disabled={changingPw} className="w-full h-12 rounded-xl">
               {changingPw ? "Updating..." : "Update Password"}
             </Button>

@@ -1,4 +1,5 @@
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ interface StepAboutYouProps {
 }
 
 const StepAboutYou = ({ data, onChange, onNext, onBack }: StepAboutYouProps) => {
+  const [showPwd, setShowPwd] = useState(false);
   const isValid = data.businessName && data.ownerName && data.phone && data.password.length >= 6;
 
   return (
@@ -62,13 +64,22 @@ const StepAboutYou = ({ data, onChange, onNext, onBack }: StepAboutYouProps) => 
         </div>
         <div>
           <Label className="text-sm font-semibold text-foreground">Password</Label>
-          <Input
-            type="password"
-            placeholder="Min. 6 characters"
-            value={data.password}
-            onChange={(e) => onChange({ password: e.target.value })}
-            className="mt-1.5 h-12 rounded-xl bg-secondary border-0"
-          />
+          <div className="relative mt-1.5">
+            <Input
+              type={showPwd ? "text" : "password"}
+              placeholder="Min. 6 characters"
+              value={data.password}
+              onChange={(e) => onChange({ password: e.target.value })}
+              className="h-12 rounded-xl bg-secondary border-0 pr-10"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPwd(!showPwd)}
+              className="absolute right-3 top-0 h-12 flex items-center justify-center text-muted-foreground tap-scale"
+            >
+              {showPwd ? <EyeOff className="w-4 h-4"/> : <Eye className="w-4 h-4"/>}
+            </button>
+          </div>
         </div>
       </div>
 
