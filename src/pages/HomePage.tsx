@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { CATEGORIES } from "@/lib/categories";
 import { useNavigate } from "react-router-dom";
 import { shareProviderProfile } from "@/services/native/shareProfile";
+import { useReadableLocation } from "@/lib/readableLocation";
 
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
@@ -44,6 +45,7 @@ const Divider = () => <div className="h-px my-3" style={{ background: "hsl(var(-
 const HomePage = () => {
   const { user } = useAuth();
   const { profile, uploadImage, updateProfile } = useProfile();
+  const readableAddress = useReadableLocation({ address: profile?.address, city: profile?.city, state: profile?.state, latitude: profile?.latitude, longitude: profile?.longitude });
   const { services, addService } = useServices();
   const navigate = useNavigate();
 
@@ -226,7 +228,7 @@ const HomePage = () => {
             <Divider />
             <NeuRow icon={Phone}  label="Phone"    value={profile?.phone} />
             <Divider />
-            <NeuRow icon={MapPin} label="Address"  value={profile?.address} />
+            <NeuRow icon={MapPin} label="Address"  value={readableAddress || (profile?.address ? "Resolving location…" : null)} />
             <Divider />
             <NeuRow icon={MapPin} label="City"     value={profile?.city} />
             <Divider />

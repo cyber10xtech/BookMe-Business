@@ -23,6 +23,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import type { Promotion } from "@/lib/database.types";
+import { useReadableLocation } from "@/lib/readableLocation";
 
 const TABS = ["Bookings", "Services", "Reviews", "Promotions"] as const;
 type FilterType = "all" | "today" | "pending" | "completed" | "confirmed";
@@ -59,6 +60,11 @@ const Avatar = ({ url, name, size = "md" }: { url?: string|null; name?: string|n
         style={{ background: "linear-gradient(135deg, hsl(220 80% 40%), hsl(220 100% 20%))", boxShadow: "var(--shadow-flat)" }}>
         {initials}
       </div>;
+};
+
+const BookingLocation = ({ value }: { value?: string | null }) => {
+  const location = useReadableLocation({ address: value });
+  return <>{location}</>;
 };
 
 const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, onReschedule, accepting, rescheduling, navigate }: {
@@ -154,7 +160,7 @@ const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, onResc
               <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
               <span className="text-xs text-muted-foreground capitalize">
                 {booking.delivery_mode === "at_home" ? "Home service" : "At shop"}
-                {booking.customer_location ? ` · ${booking.customer_location}` : ""}
+                {booking.customer_location ? <> · <BookingLocation value={booking.customer_location} /></> : ""}
               </span>
             </div>
           </div>

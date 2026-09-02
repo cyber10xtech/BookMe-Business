@@ -76,7 +76,7 @@ const Register = () => {
     phone: "",
     password: "",
   });
-  const [location, setLocation] = useState({ address: "", city: "", state: "" });
+  const [location, setLocation] = useState({ address: "", city: "", state: "", latitude: undefined as number | undefined, longitude: undefined as number | undefined });
   const [category, setCategory] = useState<CategoryId | null>(null);
   const [services, setServices] = useState<ServiceEntry[]>([]);
   const [hours, setHours] = useState<Record<string, DayHours>>(defaultHours());
@@ -108,6 +108,8 @@ const Register = () => {
             address: location.address,
             city: location.city,
             state: location.state,
+            latitude: location.latitude,
+            longitude: location.longitude,
             category,
             business_hours: hours,
             role: "provider",
@@ -128,6 +130,8 @@ const Register = () => {
             address: location.address,
             city: location.city,
             state: location.state,
+            latitude: location.latitude,
+            longitude: location.longitude,
             category: category || "general",
             business_hours: hours,
             role: "provider",

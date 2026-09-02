@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import StateLgaSelector from "../common/StateLgaSelector";
+import { resolveReadableLocation } from "@/lib/readableLocation";
 
 interface StepLocationProps {
-  data: { address: string; city: string; state: string };
+  data: { address: string; city: string; state: string; latitude?: number; longitude?: number };
   onChange: (data: Partial<StepLocationProps["data"]>) => void;
   onNext: () => void;
   onBack: () => void;
@@ -17,10 +18,10 @@ const StepLocation = ({ data, onChange, onNext, onBack }: StepLocationProps) => 
   const handleGPS = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          onChange({
-            address: `Lat: ${pos.coords.latitude.toFixed(4)}, Lng: ${pos.coords.longitude.toFixed(4)}`,
-          });
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const address = await resolveReadableLocation({ latitude, longitude, city: data.city, state: data.state });
+          onChange({ address, latitude, longitude });
         },
         () => {}
       );
