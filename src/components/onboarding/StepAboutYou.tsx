@@ -3,7 +3,7 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import PhoneInput from "@/components/PhoneInput";
+import { PhoneInput, isValidNigerianPhone } from "@/components/PhoneInput";
 
 interface StepAboutYouProps {
   data: {
@@ -18,7 +18,7 @@ interface StepAboutYouProps {
 }
 
 const StepAboutYou = ({ data, onChange, onNext, onBack }: StepAboutYouProps) => {
-  const isValid = data.businessName && data.ownerName && data.phone && data.password.length >= 6;
+  const isValid = data.businessName && data.ownerName && isValidNigerianPhone(data.phone) && data.password.length >= 6;
 
   return (
     <div className="bg-card rounded-3xl p-6 animate-fade-in">

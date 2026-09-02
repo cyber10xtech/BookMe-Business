@@ -13,7 +13,7 @@ import { CATEGORIES } from "@/lib/categories";
 import { useProfileCompletion, COMPLETION_THRESHOLD } from "@/hooks/useProfileCompletion";
 import { useServices } from "@/hooks/useServices";
 import StateLgaSelector from "@/components/common/StateLgaSelector";
-import PhoneInput from "@/components/PhoneInput";
+import { PhoneInput, isValidNigerianPhone } from "@/components/PhoneInput";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -123,6 +123,10 @@ const EditProfilePage = () => {
   };
 
   const handleSave = async () => {
+    if (form.phone && !isValidNigerianPhone(form.phone)) {
+      toast.error("Enter a valid 11-digit Nigerian phone number.");
+      return;
+    }
     await updateProfile({
       business_name: form.business_name,
       owner_name: form.owner_name,
