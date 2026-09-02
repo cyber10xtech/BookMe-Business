@@ -59,7 +59,7 @@ const AppInner = () => {
   // Configure status bar once on mount
   useEffect(() => { syncStatusBar(false); }, []);
 
-  // Check if profile is active
+  // Check if profile is active & subscribe to realtime profile updates for is_active
   useEffect(() => {
     if (!user) {
       setIsDeactivated(false);
@@ -73,6 +73,28 @@ const AppInner = () => {
       .then(({ data }) => {
         setIsDeactivated(data?.is_active === false);
       });
+
+    const channel = supabase
+      .channel(`business-profile-active-${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "profiles",
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload: any) => {
+          if (payload.new && typeof payload.new.is_active === "boolean") {
+            setIsDeactivated(payload.new.is_active === false);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
   if (user && isDeactivated) {

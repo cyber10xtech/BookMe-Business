@@ -87,17 +87,35 @@ export const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete,
 
   const handleSavePrice = async () => {
     const val = parseFloat(editedPrice);
-    if (isNaN(val) || val < 0) {
-      toast.error("Please enter a valid amount.");
+    if (isNaN(val) || val <= 0) {
+      toast.error("Please enter a valid positive amount.");
       return;
     }
+
+    // Parse service range metadata if available
+    const minPrice = booking.service_price || 0;
+    let maxPrice = 0;
+    if ((booking as any).service_description) {
+      try {
+        const parsed = JSON.parse((booking as any).service_description);
+        if (parsed?.maxPrice) maxPrice = Number(parsed.maxPrice) || 0;
+      } catch (_) {}
+    }
+
+    if (minPrice > 0 && val < minPrice) {
+      toast.error(`Price cannot be less than service minimum (₦${minPrice.toLocaleString()}).`);
+      return;
+    }
+    if (maxPrice > 0 && val > maxPrice) {
+      toast.error(`Price cannot exceed service maximum (₦${maxPrice.toLocaleString()}).`);
+      return;
+    }
+
     setSavingPrice(true);
     const { error } = await supabase
       .from("bookings")
       .update({
         total_price: val,
-        price: val,
-        service_price: val,
         updated_at: new Date().toISOString(),
       })
       .eq("id", booking.id);
@@ -108,7 +126,6 @@ export const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete,
     } else {
       toast.success(`Booking price updated to ${fmt(val)}`);
       booking.total_price = val;
-      booking.service_price = val;
       setIsEditingPrice(false);
     }
   };
