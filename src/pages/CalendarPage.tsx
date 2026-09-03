@@ -34,6 +34,7 @@ const Avatar = ({ url, name, size = "md" }: { url?: string|null; name?: string|n
 
 const CalendarPage = () => {
   const { bookings, updateBookingStatus, rescheduleBooking } = useBookings();
+  const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedBooking, setSelectedBooking] = useState<EnrichedBooking|null>(null);
   const [accepting, setAccepting] = useState<string|null>(null);
