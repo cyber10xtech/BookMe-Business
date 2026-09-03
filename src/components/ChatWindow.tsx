@@ -110,7 +110,7 @@ async function notifyOtherUser(
         message:            body,
         type:               "new_message",
         related_booking_id: conv.booking_id ?? undefined,
-        data: { conversation_id: conversationId, message_type: messageType },
+        data: { conversation_id: conversationId, message_type: messageType, click_action: `/chats?conversation=${conversationId}` },
       },
     });
   } catch (err) {

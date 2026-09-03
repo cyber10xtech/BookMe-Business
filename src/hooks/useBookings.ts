@@ -149,7 +149,7 @@ export const useBookings = () => {
       const notifType = NOTIF_TYPE_MAP[dbStatus] ?? "booking_update";
       const titles: Record<string, string> = {
         confirmed:   "Booking Confirmed! ✅",
-        cancelled:   "Booking Cancelled",
+        cancelled:   "Booking Cancelled ❌",
         completed:   "Service Completed ⭐",
         rescheduled: "Booking Rescheduled",
       };
@@ -181,6 +181,7 @@ export const useBookings = () => {
           message: bodies[dbStatus] ?? `Status: ${dbStatus}`,
           type: notifType,
           related_booking_id: id,
+          data: { click_action: dbStatus === "confirmed" ? `/calendar?booking=${booking.id}` : "/calendar" },
         },
       }).catch(() => {});
     }
@@ -209,7 +210,7 @@ export const useBookings = () => {
       type: "booking_rescheduled", related_booking_id: id,
       related_provider_id: profile.id, data: { booking_id: id, type: "booking_rescheduled" }, is_read: false,
     } as any);
-    void supabase.functions.invoke("send-notification", { body: { user_id: booking.customer_id, title: "Booking Rescheduled", message: body, type: "booking_rescheduled", related_booking_id: id } });
+    void supabase.functions.invoke("send-notification", { body: { user_id: booking.customer_id, title: "Booking Rescheduled", message: body, type: "booking_rescheduled", related_booking_id: id, data: { click_action: `/calendar?booking=${booking.id}` } } });
     await fetchBookings();
     return true;
   };
