@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Lock, LogOut, FileText, Shield, MessageCircle, ChevronRight, ExternalLink, CheckCircle2, Circle, ChevronDown, ChevronUp, Trash2, ShieldCheck } from "lucide-react";
+import { Lock, LogOut, FileText, Shield, MessageCircle, ChevronRight, ExternalLink, CheckCircle2, Circle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -175,45 +175,6 @@ const MorePage = () => {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* ── Business Verification ── */}
-        <div className="bg-card rounded-2xl border border-border overflow-hidden mb-4">
-          <div className="px-5 py-3 border-b border-border flex justify-between items-center">
-            <p className="text-xs font-bold text-primary uppercase tracking-widest">Business Verification</p>
-            <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${
-              profile?.is_verified || (profile as any)?.verification_status === "verified"
-                ? "bg-green-500/15 text-green-700"
-                : (profile as any)?.verification_status === "under_review" || (profile as any)?.verification_status === "submitted"
-                ? "bg-amber-500/15 text-amber-700"
-                : (profile as any)?.verification_status === "action_required"
-                ? "bg-red-500/15 text-red-700"
-                : "bg-secondary text-muted-foreground"
-            }`}>
-              {profile?.is_verified || (profile as any)?.verification_status === "verified"
-                ? "✓ Verified"
-                : (profile as any)?.verification_status === "under_review" || (profile as any)?.verification_status === "submitted"
-                ? "Under Review"
-                : (profile as any)?.verification_status === "action_required"
-                ? "Action Required"
-                : (profile as any)?.verification_status === "rejected"
-                ? "Rejected"
-                : "Not Verified"}
-            </span>
-          </div>
-          <button onClick={() => navigate("/verification")}
-            className="w-full flex items-center gap-4 px-5 py-4 hover:bg-secondary/50 transition-colors">
-            <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 text-left">
-              <p className="font-semibold text-foreground text-sm">Identity & Business Credentials</p>
-              <p className="text-xs text-muted-foreground">
-                {profile?.is_verified ? "View verified status & documents" : "Submit NIN, ID and CAC/Skill certificate for verification badge"}
-              </p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-          </button>
         </div>
 
         {/* ── Account ── */}
