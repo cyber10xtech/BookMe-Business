@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { registerPushNotifications, requestLocationPermission } from "@/services/native";
+import { registerPushNotifications, requestLocationPermission, isNative } from "@/services/native";
 
-const PERMISSIONS_KEY = "bookme_permissions_v2";
+const DISMISSED_KEY = "bookme_permissions_dismissed_at";
+const ALL_GRANTED_KEY = "bookme_permissions_all_granted";
+const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000; // 48 hours in ms
 
 export const usePermissions = () => {
   const { user } = useAuth();
@@ -10,23 +12,88 @@ export const usePermissions = () => {
   const [notifStatus, setNotifStatus] = useState<"idle" | "granted" | "denied">("idle");
   const [locationStatus, setLocationStatus] = useState<"idle" | "granted" | "denied">("idle");
   const [requesting, setRequesting] = useState(false);
-  const done = useRef(false);
+  const doneRef = useRef(false);
 
-  useEffect(() => {
-    if (!user || done.current) return;
-    if (localStorage.getItem(PERMISSIONS_KEY)) return;
-    // Show modal after 1s so app renders first
-    const t = setTimeout(() => setShowModal(true), 1000);
-    return () => clearTimeout(t);
-  }, [user]);
+  // Check current permission status synchronously and asynchronously
+  const checkStatus = useCallback(async () => {
+    let currentNotif: "idle" | "granted" | "denied" = "idle";
+    let currentLocation: "idle" | "granted" | "denied" = "idle";
 
-  // Sync current browser permission state on mount
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if ("Notification" in window) {
-      if (Notification.permission === "granted") setNotifStatus("granted");
-      else if (Notification.permission === "denied") setNotifStatus("denied");
+    if (isNative()) {
+      try {
+        const { FirebaseMessaging } = await import("@capacitor-firebase/messaging");
+        const pResult = await FirebaseMessaging.checkPermissions();
+        if (pResult.receive === "granted") currentNotif = "granted";
+        else if (pResult.receive === "denied") currentNotif = "denied";
+      } catch (e) {
+        console.warn("[usePermissions] Native notif status check failed:", e);
+      }
+
+      try {
+        const { Geolocation } = await import("@capacitor/geolocation");
+        const locResult = await Geolocation.checkPermissions();
+        if (locResult.location === "granted" || locResult.coarseLocation === "granted") {
+          currentLocation = "granted";
+        } else if (locResult.location === "denied" && locResult.coarseLocation === "denied") {
+          currentLocation = "denied";
+        }
+      } catch (e) {
+        console.warn("[usePermissions] Native loc status check failed:", e);
+      }
+    } else {
+      if (typeof window !== "undefined" && "Notification" in window) {
+        if (Notification.permission === "granted") currentNotif = "granted";
+        else if (Notification.permission === "denied") currentNotif = "denied";
+      }
     }
+
+    setNotifStatus(currentNotif);
+    setLocationStatus(currentLocation);
+
+    return { currentNotif, currentLocation };
+  }, []);
+
+  useEffect(() => {
+    if (!user || doneRef.current) return;
+
+    // Check if user already granted all permissions permanently
+    if (localStorage.getItem(ALL_GRANTED_KEY) === "true") {
+      return;
+    }
+
+    // Check 2-day cooldown timer (48 hours)
+    const dismissedAtStr = localStorage.getItem(DISMISSED_KEY);
+    if (dismissedAtStr) {
+      const dismissedAt = parseInt(dismissedAtStr, 10);
+      if (!isNaN(dismissedAt) && Date.now() - dismissedAt < TWO_DAYS_MS) {
+        // Less than 48h since last dismiss — skip popup
+        return;
+      }
+    }
+
+    let isMounted = true;
+    checkStatus().then(({ currentNotif, currentLocation }) => {
+      if (!isMounted) return;
+      if (currentNotif === "granted" && currentLocation === "granted") {
+        localStorage.setItem(ALL_GRANTED_KEY, "true");
+        setShowModal(false);
+      } else {
+        // Delay 1s to let app interface finish mounting cleanly
+        setTimeout(() => {
+          if (isMounted && !doneRef.current) setShowModal(true);
+        }, 1000);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user, checkStatus]);
+
+  const dismissModal = useCallback(() => {
+    doneRef.current = true;
+    setShowModal(false);
+    localStorage.setItem(DISMISSED_KEY, Date.now().toString());
   }, []);
 
   const requestNotifications = async () => {
@@ -34,12 +101,13 @@ export const usePermissions = () => {
     setRequesting(true);
     try {
       await registerPushNotifications(user.id);
-      const perm = "Notification" in window ? Notification.permission : "denied";
-      setNotifStatus(perm === "granted" ? "granted" : "denied");
-    } catch {
+      await checkStatus();
+    } catch (e) {
+      console.warn("[usePermissions] requestNotifications failed:", e);
       setNotifStatus("denied");
+    } finally {
+      setRequesting(false);
     }
-    setRequesting(false);
   };
 
   const requestLocation = async () => {
@@ -47,28 +115,39 @@ export const usePermissions = () => {
     try {
       const granted = await requestLocationPermission();
       setLocationStatus(granted ? "granted" : "denied");
-    } catch {
+      await checkStatus();
+    } catch (e) {
+      console.warn("[usePermissions] requestLocation failed:", e);
       setLocationStatus("denied");
+    } finally {
+      setRequesting(false);
     }
-    setRequesting(false);
-  };
-
-  const dismissModal = () => {
-    done.current = true;
-    setShowModal(false);
-    localStorage.setItem(PERMISSIONS_KEY, "true");
   };
 
   const acceptAll = async () => {
     if (!user) return;
     setRequesting(true);
-    await registerPushNotifications(user.id);
-    await requestLocationPermission();
-    const perm = "Notification" in window ? Notification.permission : "denied";
-    setNotifStatus(perm === "granted" ? "granted" : "denied");
-    setLocationStatus("granted");
-    setRequesting(false);
-    dismissModal();
+    try {
+      await registerPushNotifications(user.id);
+    } catch (e) {
+      console.warn("[usePermissions] acceptAll push error:", e);
+    }
+
+    try {
+      await requestLocationPermission();
+    } catch (e) {
+      console.warn("[usePermissions] acceptAll location error:", e);
+    }
+
+    try {
+      const { currentNotif, currentLocation } = await checkStatus();
+      if (currentNotif === "granted" && currentLocation === "granted") {
+        localStorage.setItem(ALL_GRANTED_KEY, "true");
+      }
+    } finally {
+      setRequesting(false);
+      dismissModal();
+    }
   };
 
   return {
