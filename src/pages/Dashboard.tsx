@@ -52,7 +52,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 const Avatar = ({ url, name, size = "md" }: { url?: string|null; name?: string|null; size?: "sm"|"md"|"lg" }) => {
   const sz = size === "sm" ? "w-8 h-8 text-xs" : size === "lg" ? "w-14 h-14 text-xl" : "w-11 h-11 text-sm";
-  const initials = (name || "?").split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  const initials = (name || "?").split(" ").map(n => n[0] ?? "").filter(Boolean).join("").toUpperCase().slice(0, 2) || "?";
   return url
     ? <img src={url} alt={name||""} className={`${sz} rounded-full object-cover flex-shrink-0`}
         style={{ boxShadow: "var(--shadow-flat)" }} />

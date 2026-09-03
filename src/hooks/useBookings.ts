@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -21,12 +21,7 @@ const STATUS_MAP: Record<string, string> = {
 // Statuses that should never be overwritten by auto-completion.
 const TERMINAL_STATUSES = new Set(["completed", "cancelled", "rejected", "no_show"]);
 
-// Must match the public.notification_type Postgres enum exactly — an
-// invalid value here makes the notifications insert below throw, and (since
-// it isn't awaited-with-error-handling below) that failure was silent.
-// 'booking_cancelled' / 'booking_rescheduled' are added to the enum in
-// supabase/migrations/20260727110000_auto_confirm_bookings_and_fix_notifications.sql
-// (customer app repo — shared backend).
+// Must match the public.notification_type Postgres enum exactly
 const NOTIF_TYPE_MAP: Record<string, string> = {
   confirmed:   "booking_confirmed",
   cancelled:   "booking_cancelled",
@@ -34,11 +29,47 @@ const NOTIF_TYPE_MAP: Record<string, string> = {
   rescheduled: "booking_rescheduled",
 };
 
+function parseBookingDateTime(dateStr?: string | null, timeStr?: string | null): number {
+  if (!dateStr) return NaN;
+  const cleanDate = dateStr.trim();
+  if (!cleanDate) return NaN;
+
+  let timePart = (timeStr || "00:00").trim();
+  let hours = 0;
+  let minutes = 0;
+
+  // Check for AM/PM
+  const ampmMatch = timePart.match(/^(.*?)\s*(AM|PM)$/i);
+  if (ampmMatch) {
+    const rawTime = ampmMatch[1].trim();
+    const ampm = ampmMatch[2].toUpperCase();
+    const parts = rawTime.split(":");
+    let h = parseInt(parts[0], 10) || 0;
+    const m = parseInt(parts[1], 10) || 0;
+    if (ampm === "PM" && h < 12) h += 12;
+    if (ampm === "AM" && h === 12) h = 0;
+    hours = h;
+    minutes = m;
+  } else {
+    // 24-hour format "HH:MM" or "HH:MM:SS"
+    const parts = timePart.split(":");
+    hours = parseInt(parts[0], 10) || 0;
+    minutes = parseInt(parts[1], 10) || 0;
+  }
+
+  const hStr = String(hours).padStart(2, "0");
+  const mStr = String(minutes).padStart(2, "0");
+  const isoString = `${cleanDate}T${hStr}:${mStr}:00`;
+  const dt = new Date(isoString).getTime();
+  return dt;
+}
+
 export const useBookings = () => {
   const { user } = useAuth();
   const { profile } = useProfile();
   const [bookings, setBookings] = useState<EnrichedBooking[]>([]);
   const [loading, setLoading] = useState(true);
+  const processedRef = useRef<Set<string>>(new Set());
 
   const fetchBookings = useCallback(async () => {
     if (!user || !profile) return;
@@ -183,23 +214,22 @@ export const useBookings = () => {
     return true;
   };
 
-  // Client-side safety net: as soon as this dashboard loads a booking that
-  // has already passed its date/time, flip it to "completed" immediately
-  // instead of waiting for the next tick. The authoritative mechanism is
-  // the server-side pg_cron job (runs every 10 min regardless of whether
-  // any app is open) — see
-  // supabase/migrations/20260804000000_bookme_auto_complete_past_bookings.sql.
-  // This effect just makes the UI feel instant when a provider is
-  // actively looking at their bookings; it uses the browser's local time,
-  // so treat it as a nicety, not the source of truth.
+  // Client-side safety net: auto-complete past bookings safely with processedRef
   useEffect(() => {
     const now = Date.now();
     const overdue = bookings.filter((b) => {
+      if (processedRef.current.has(b.id)) return false;
       if (TERMINAL_STATUSES.has(b.status)) return false;
-      const dt = new Date(`${b.booking_date}T${b.booking_time}`).getTime();
+      const dt = parseBookingDateTime(b.booking_date, b.booking_time);
       return !Number.isNaN(dt) && dt < now;
     });
-    overdue.forEach((b) => { updateBookingStatus(b.id, "completed"); });
+
+    if (overdue.length === 0) return;
+
+    overdue.forEach((b) => {
+      processedRef.current.add(b.id);
+      updateBookingStatus(b.id, "completed");
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookings]);
 
