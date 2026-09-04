@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { CATEGORIES } from "@/lib/categories";
 import { useProfileCompletion, COMPLETION_THRESHOLD } from "@/hooks/useProfileCompletion";
 import { useServices } from "@/hooks/useServices";
+import { DefaultServicesSection } from "@/components/profile/DefaultServicesSection";
 import StateLgaSelector from "@/components/common/StateLgaSelector";
 import { PhoneInput, isValidNigerianPhone } from "@/components/PhoneInput";
 
@@ -144,7 +145,7 @@ const EditProfilePage = () => {
     navigate("/home");
   };
 
-  const { services } = useServices();
+  const { services, updateService } = useServices();
   // Build a "live" profile snapshot using the current form state so the bar
   // reacts to edits before the user hits Save
   const liveProfile = profile
@@ -351,6 +352,12 @@ const EditProfilePage = () => {
             })}
           </div>
         </div>
+
+        <DefaultServicesSection
+          services={services}
+          userId={user?.id || ""}
+          onUpdateService={updateService}
+        />
 
         <Button onClick={handleSave} className="w-full h-12 rounded-xl font-semibold">Save Changes</Button>
       </div>
