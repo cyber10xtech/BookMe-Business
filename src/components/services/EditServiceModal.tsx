@@ -118,11 +118,10 @@ export const EditServiceModal = ({ service, userId, open, onClose, onSave }: Edi
               </DialogTitle>
             </div>
             <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                isDefault
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${isDefault
                   ? "bg-primary/10 text-primary border-primary/20"
                   : "bg-secondary text-muted-foreground border-border"
-              }`}
+                }`}
             >
               {isDefault ? "Profile-managed" : "Custom Service"}
             </span>
@@ -184,9 +183,8 @@ export const EditServiceModal = ({ service, userId, open, onClose, onSave }: Edi
                       key={em}
                       type="button"
                       onClick={() => setEmoji(em)}
-                      className={`text-xs px-1 rounded transition-transform ${
-                        emoji === em ? "scale-125 font-bold" : "opacity-60"
-                      }`}
+                      className={`text-xs px-1 rounded transition-transform ${emoji === em ? "scale-125 font-bold" : "opacity-60"
+                        }`}
                     >
                       {em}
                     </button>
@@ -292,11 +290,10 @@ export const EditServiceModal = ({ service, userId, open, onClose, onSave }: Edi
                   key={t}
                   type="button"
                   onClick={() => setPricingType(t)}
-                  className={`flex-1 h-10 rounded-xl text-xs font-bold transition-all border ${
-                    pricingType === t
+                  className={`flex-1 h-10 rounded-xl text-xs font-bold transition-all border ${pricingType === t
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-secondary text-muted-foreground border-border hover:bg-secondary/80"
-                  }`}
+                    }`}
                 >
                   {t === "fixed" ? "Fixed Price" : "Price Range"}
                 </button>
@@ -308,12 +305,12 @@ export const EditServiceModal = ({ service, userId, open, onClose, onSave }: Edi
                 { label: pricingType === "range" ? "Min Price (₦)" : "Price (₦)", val: price, set: setPrice },
                 ...(pricingType === "range"
                   ? [
-                      {
-                        label: `Max Price (≤₦${twoX.toLocaleString()})`,
-                        val: maxPrice || 0,
-                        set: (v: number) => setMaxPrice(v),
-                      },
-                    ]
+                    {
+                      label: `Max Price (≤₦${twoX.toLocaleString()})`,
+                      val: maxPrice || 0,
+                      set: (v: number) => setMaxPrice(v),
+                    },
+                  ]
                   : []),
               ].map(({ label, val, set }) => (
                 <div key={label} className="flex flex-col gap-1">
