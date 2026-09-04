@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { Camera, Globe, MapPin, Phone, Mail, Tag, Lock, Star, Plus, Edit2, Image as ImageIcon, Clock, Eye, Share2, X, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Camera, Globe, MapPin, Phone, Mail, Tag, Lock, Star, Plus, Edit2, Image as ImageIcon, Clock, Eye, Share2, ChevronRight } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import AppLayout from "@/components/layout/AppLayout";
 import AddServiceSheet, { type AddServiceData } from "@/components/dashboard/AddServiceSheet";
+import { EditServiceModal } from "@/components/services/EditServiceModal";
+import { GalleryManagerModal, type GalleryPhotoItem } from "@/components/gallery/GalleryManagerModal";
 import { useProfile } from "@/hooks/useProfile";
 import { useServices } from "@/hooks/useServices";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +16,14 @@ import { shareProviderProfile } from "@/services/native/shareProfile";
 import { useReadableLocation } from "@/lib/readableLocation";
 
 const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+function minsToLabel(m: number): string {
+  if (!m || m <= 0) return "1 hr";
+  if (m < 60) return `${m} mins`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r > 0 ? `${h} hr ${r} mins` : `${h} hr`;
+}
 
 const NeuSection = ({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) => (
   <div className="rounded-3xl p-5" style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}>
@@ -46,7 +55,7 @@ const HomePage = () => {
   const { user } = useAuth();
   const { profile, uploadImage, updateProfile } = useProfile();
   const readableAddress = useReadableLocation({ address: profile?.address, city: profile?.city, state: profile?.state, latitude: profile?.latitude, longitude: profile?.longitude });
-  const { services, addService } = useServices();
+  const { services, addService, updateService } = useServices();
   const navigate = useNavigate();
 
   const handleShareProfile = async () => {
@@ -67,7 +76,11 @@ const HomePage = () => {
   };
 
   const [serviceSheetOpen, setServiceSheetOpen] = useState(false);
-  const [galleryPhotos, setGalleryPhotos] = useState<string[]>([]);
+  const [editingService, setEditingService] = useState<any | null>(null);
+
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhotoItem[]>([]);
+  const [selectedGalleryPhoto, setSelectedGalleryPhoto] = useState<GalleryPhotoItem | null>(null);
+
   const [uploadingCover, setUploadingCover] = useState(false);
 
   const coverRef  = useRef<HTMLInputElement>(null);
@@ -76,9 +89,11 @@ const HomePage = () => {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("gallery_photos").select("photo_url").eq("user_id", user.id)
+    supabase.from("gallery_photos")
+      .select("id, photo_url, caption, created_at")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
-      .then(({ data }) => setGalleryPhotos(data?.map((p: any) => p.photo_url) || []));
+      .then(({ data }) => setGalleryPhotos((data as GalleryPhotoItem[]) || []));
   }, [user]);
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,10 +116,21 @@ const HomePage = () => {
     const files = e.target.files; if (!files || !user) return;
     for (const file of Array.from(files)) {
       const path = `${user.id}/gallery/${Date.now()}-${file.name}`;
-      await supabase.storage.from("business-assets").upload(path, file);
+      const { error: uploadErr } = await supabase.storage.from("business-assets").upload(path, file);
+      if (uploadErr) {
+        toast.error("Upload failed: " + uploadErr.message);
+        continue;
+      }
       const { data } = supabase.storage.from("business-assets").getPublicUrl(path);
-      await supabase.from("gallery_photos").insert({ user_id: user.id, photo_url: data.publicUrl });
-      setGalleryPhotos(prev => [data.publicUrl, ...prev]);
+      const { data: newRow } = await supabase
+        .from("gallery_photos")
+        .insert({ user_id: user.id, photo_url: data.publicUrl })
+        .select("id, photo_url, caption, created_at")
+        .single();
+
+      if (newRow) {
+        setGalleryPhotos((prev) => [newRow as GalleryPhotoItem, ...prev]);
+      }
     }
     toast.success("Photos added!"); e.target.value = "";
   };
@@ -134,6 +160,58 @@ const HomePage = () => {
 
       <AddServiceSheet open={serviceSheetOpen} onClose={() => setServiceSheetOpen(false)}
         onSave={handleAddService} userId={user?.id || ""} />
+
+      {/* Shared Edit Service Modal */}
+      {editingService && (
+        <EditServiceModal
+          service={editingService}
+          userId={user?.id || ""}
+          open={Boolean(editingService)}
+          onClose={() => setEditingService(null)}
+          onSave={async (updatedData) => {
+            const meta = getMeta(editingService);
+            const isDefault = editingService.is_featured === true || meta.isLocked === true;
+            const durationLabel = minsToLabel(updatedData.durationMins);
+            const updatedMeta = {
+              ...meta,
+              pricingType: updatedData.pricingType,
+              maxPrice: updatedData.pricingType === "range" ? updatedData.maxPrice : undefined,
+              emoji: updatedData.emoji || "⭐",
+              isLocked: isDefault ? true : false,
+              imageUrls: updatedData.imageUrls,
+              description: updatedData.descText.trim(),
+            };
+
+            await updateService(editingService.id, {
+              name: updatedData.name.trim(),
+              duration: durationLabel,
+              duration_minutes: updatedData.durationMins,
+              price: updatedData.price,
+              is_featured: isDefault ? true : false,
+              description: JSON.stringify(updatedMeta),
+            } as any);
+
+            toast.success(isDefault ? "Default service updated!" : "Service updated!");
+            setEditingService(null);
+          }}
+        />
+      )}
+
+      {/* Gallery Manager Modal */}
+      {selectedGalleryPhoto && (
+        <GalleryManagerModal
+          photo={selectedGalleryPhoto}
+          userId={user?.id || ""}
+          open={Boolean(selectedGalleryPhoto)}
+          onClose={() => setSelectedGalleryPhoto(null)}
+          onPhotoUpdated={(updated) => {
+            setGalleryPhotos((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+          }}
+          onPhotoDeleted={(deletedId) => {
+            setGalleryPhotos((prev) => prev.filter((p) => p.id !== deletedId));
+          }}
+        />
+      )}
 
       {/* Cover photo */}
       <div className="relative h-48 cursor-pointer group select-none" onClick={() => coverRef.current?.click()}>
@@ -269,7 +347,7 @@ const HomePage = () => {
           </div>
         </NeuSection>
 
-        {/* Services */}
+        {/* Services (Interactive & Manageable) */}
         <NeuSection title="Services" action={
           <button onClick={() => setServiceSheetOpen(true)}
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl tap-scale"
@@ -288,22 +366,39 @@ const HomePage = () => {
             <div className="space-y-3">
               {services.map((s, i) => {
                 const meta = getMeta(s);
+                const isDefault = s.is_featured === true || meta.isLocked === true;
                 return (
                   <div key={s.id}>
-                    <div className="flex items-center gap-3">
+                    <div
+                      onClick={() => setEditingService(s)}
+                      className="flex items-center gap-3 cursor-pointer p-2 rounded-2xl transition-colors hover:bg-secondary/40 active:scale-[0.99] group"
+                    >
                       {meta.imageUrls?.[0]
                         ? <img src={meta.imageUrls[0]} className="w-11 h-11 rounded-2xl object-cover flex-shrink-0" style={{ boxShadow: "var(--shadow-flat)" }} alt={s.name} />
                         : <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg flex-shrink-0"
                             style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>{meta.emoji || "⭐"}</div>
                       }
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-foreground truncate">{s.name}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">{s.name}</p>
+                          {isDefault && (
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-primary/10 text-primary border border-primary/20 flex-shrink-0">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
                           {s.duration} · {meta.pricingType === "range" && meta.maxPrice
                             ? `₦${s.price.toLocaleString()} – ₦${meta.maxPrice.toLocaleString()}`
                             : `₦${s.price.toLocaleString()}`}
                         </p>
                       </div>
+                      <button
+                        type="button"
+                        className="flex items-center gap-1 text-[11px] font-bold text-primary px-2.5 py-1 rounded-xl bg-secondary/80 flex-shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-all"
+                      >
+                        <Edit2 className="w-3 h-3" /> Edit
+                      </button>
                     </div>
                     {i < services.length - 1 && <Divider />}
                   </div>
@@ -313,7 +408,7 @@ const HomePage = () => {
           )}
         </NeuSection>
 
-        {/* Gallery */}
+        {/* Gallery (Interactive & Manageable) */}
         <NeuSection title="Gallery" action={
           <button onClick={() => galleryRef.current?.click()}
             className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl tap-scale"
@@ -330,10 +425,17 @@ const HomePage = () => {
             </button>
           ) : (
             <div className="grid grid-cols-3 gap-2">
-              {galleryPhotos.slice(0, 9).map((url, i) => (
-                <div key={i} className="aspect-square rounded-2xl overflow-hidden"
-                  style={{ boxShadow: "var(--shadow-flat)" }}>
-                  <img src={url} alt="" className="w-full h-full object-cover" />
+              {galleryPhotos.slice(0, 9).map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => setSelectedGalleryPhoto(item)}
+                  className="aspect-square rounded-2xl overflow-hidden cursor-pointer relative group hover:opacity-90 transition-all active:scale-95"
+                  style={{ boxShadow: "var(--shadow-flat)" }}
+                >
+                  <img src={item.photo_url} alt="" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <Edit2 className="w-4 h-4 text-white" />
+                  </div>
                 </div>
               ))}
               {galleryPhotos.length > 9 && (

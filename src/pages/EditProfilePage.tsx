@@ -145,7 +145,7 @@ const EditProfilePage = () => {
     navigate("/home");
   };
 
-  const { services, updateService } = useServices();
+  const { services, loading: servicesLoading, updateService } = useServices();
   // Build a "live" profile snapshot using the current form state so the bar
   // reacts to edits before the user hits Save
   const liveProfile = profile
@@ -355,6 +355,7 @@ const EditProfilePage = () => {
 
         <DefaultServicesSection
           services={services}
+          servicesLoading={servicesLoading}
           userId={user?.id || ""}
           onUpdateService={updateService}
         />
