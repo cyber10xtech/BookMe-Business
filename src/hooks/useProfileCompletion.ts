@@ -123,29 +123,8 @@ export function useProfileCompletion(profile: Profile | null, serviceCount: numb
 
   const isShadowBanned = percentage < COMPLETION_THRESHOLD;
 
-  // Auto-sync is_active with the shadowban state
-  const lastActiveRef = useRef<boolean | null>(null);
-
-  useEffect(() => {
-    if (!profile) return;
-
-    const shouldBeActive = !isShadowBanned;
-
-    // Only write when the value actually changes to avoid update loops
-    if (lastActiveRef.current === shouldBeActive) return;
-    lastActiveRef.current = shouldBeActive;
-
-    // Don't override if the profile is already in the correct state
-    if (profile.is_active === shouldBeActive) return;
-
-    supabase
-      .from("profiles")
-      .update({ is_active: shouldBeActive })
-      .eq("id", profile.id)
-      .then(({ error }) => {
-        if (error) console.error("[ProfileCompletion] Failed to update is_active:", error.message);
-      });
-  }, [isShadowBanned, profile]);
+  // Note: Profile completion is informational only.
+  // We do NOT automatically alter profiles.is_active here so that new accounts remain active.
 
   const missingItems = items.filter((i) => !i.done);
   const completedItems = items.filter((i) => i.done);

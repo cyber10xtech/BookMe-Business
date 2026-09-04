@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ interface StepAboutYouProps {
 }
 
 const StepAboutYou = ({ data, onChange, onNext, onBack }: StepAboutYouProps) => {
+  const [showPassword, setShowPassword] = useState(false);
   const isValid = data.businessName && data.ownerName && isValidNigerianPhone(data.phone) && data.password.length >= 6;
 
   return (
@@ -57,14 +58,22 @@ const StepAboutYou = ({ data, onChange, onNext, onBack }: StepAboutYouProps) => 
         </div>
         <div>
           <Label className="text-sm font-semibold text-foreground">Password</Label>
-          <div className="relative mt-1.5">
+          <div className="relative mt-1.5 flex items-center">
             <Input
-              type="password"
+              type={showPassword ? "text" : "password"}
               placeholder="Min. 6 characters"
               value={data.password}
               onChange={(e) => onChange({ password: e.target.value })}
-              className="h-12 rounded-xl bg-secondary border-0 px-4"
+              className="h-12 rounded-xl bg-secondary border-0 px-4 pr-10"
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label={showPassword ? "Hide password" : "Show password"}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
         </div>
       </div>

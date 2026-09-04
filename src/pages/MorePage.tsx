@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Lock, LogOut, FileText, Shield, MessageCircle, ChevronRight, ExternalLink, CheckCircle2, Circle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
+import { Lock, LogOut, FileText, Shield, MessageCircle, ChevronRight, ExternalLink, CheckCircle2, Circle, ChevronDown, ChevronUp, Trash2, Eye, EyeOff } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,8 @@ const MorePage = () => {
   const [passwordDialog, setPasswordDialog] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
 
   const [deleteDialog, setDeleteDialog] = useState(false);
@@ -264,13 +266,29 @@ const MorePage = () => {
         <DialogContent className="rounded-2xl">
           <DialogHeader><DialogTitle>Change Password</DialogTitle></DialogHeader>
           <div className="space-y-4 mt-2">
-            <div>
-              <Input type="password" placeholder="New password" value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0 px-4" />
+            <div className="relative flex items-center">
+              <Input type={showNewPw ? "text" : "password"} placeholder="New password" value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0 px-4 pr-10" />
+              <button
+                type="button"
+                onClick={() => setShowNewPw((v) => !v)}
+                className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showNewPw ? "Hide password" : "Show password"}
+              >
+                {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-            <div>
-              <Input type="password" placeholder="Confirm new password" value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0 px-4" />
+            <div className="relative flex items-center">
+              <Input type={showConfirmPw ? "text" : "password"} placeholder="Confirm new password" value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)} className="h-12 rounded-xl bg-secondary border-0 px-4 pr-10" />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPw((v) => !v)}
+                className="absolute right-3 text-muted-foreground hover:text-foreground transition-colors"
+                aria-label={showConfirmPw ? "Hide password" : "Show password"}
+              >
+                {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
             <Button onClick={handleChangePassword} disabled={changingPw} className="w-full h-12 rounded-xl">
               {changingPw ? "Updating..." : "Update Password"}

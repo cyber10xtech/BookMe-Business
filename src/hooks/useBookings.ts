@@ -131,7 +131,7 @@ export const useBookings = () => {
     
     if (dbStatus === "cancelled" || dbStatus === "rejected") {
       updateData.cancellation_reason = reason || null;
-      updateData.cancelled_by_role = "business";
+      updateData.cancelled_by_role = "provider";
       updateData.cancelled_at = new Date().toISOString();
     }
 
