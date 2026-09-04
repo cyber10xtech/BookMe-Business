@@ -3,8 +3,9 @@ import {
   CalendarCheck, Clock, CheckCircle2, DollarSign, Plus, Trash2,
   CheckCircle, XCircle, Phone, MapPin, ChevronRight, Star, X,
   Sparkles, TrendingUp, AlertCircle, Calendar, Lock, ArrowUpRight,
-  ChevronUp, MessageSquare,
+  ChevronUp, MessageSquare, Camera, Image as ImageIcon,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -471,7 +472,7 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
   services: any[]; userId: string;
   onAdd: (d: AddServiceData) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onUpdatePrice: (id: string, price: number, maxPrice: number|undefined, pricingType: "fixed"|"range") => Promise<void>;
+  onUpdatePrice: (id: string, price: number, maxPrice: number|undefined, pricingType: "fixed"|"range", imageUrls?: string[]) => Promise<void>;
 }) => {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState<string|null>(null);
@@ -487,6 +488,38 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
     const [pt, setPt]  = useState<"fixed"|"range">(meta.pricingType || "fixed");
     const [p, setP]    = useState<number>(s.price || 0);
     const [mp, setMp]  = useState<number|undefined>(meta.maxPrice);
+    const [images, setImages] = useState<string[]>(meta.imageUrls || []);
+    const [uploading, setUploading] = useState<number | null>(null);
+    const [saving, setSaving] = useState(false);
+
+    const photoRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+
+    const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>, slot: number) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      setUploading(slot);
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `${userId}/services/${Date.now()}_${slot}.${ext}`;
+      const { error } = await supabase.storage.from("business-assets").upload(path, file, { upsert: true });
+      if (error) {
+        toast.error("Photo upload failed: " + error.message);
+        setUploading(null);
+        e.target.value = "";
+        return;
+      }
+      const { data } = supabase.storage.from("business-assets").getPublicUrl(path);
+      setImages(prev => {
+        const next = [...prev];
+        next[slot] = data.publicUrl;
+        return next.filter(Boolean);
+      });
+      setUploading(null);
+      e.target.value = "";
+    };
+
+    const removePhoto = (slot: number) => {
+      setImages(prev => prev.filter((_, i) => i !== slot));
+    };
 
     const twoX    = p * 2;
     const exceeds = pt === "range" && mp !== undefined && mp > twoX && p > 0;
@@ -494,7 +527,7 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
     return (
       <div className="rounded-3xl overflow-hidden animate-fade-in"
         style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}>
-        {meta.imageUrls?.length > 0 && (
+        {!isEditing && meta.imageUrls?.length > 0 && (
           <div className="flex gap-1 p-3 pb-0">
             {meta.imageUrls.slice(0, 3).map((url: string, i: number) => (
               <img key={i} src={url} alt="" className="w-16 h-16 rounded-2xl object-cover"
@@ -503,7 +536,7 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
           </div>
         )}
         <div className="flex items-center gap-3 p-4">
-          {!meta.imageUrls?.length && (
+          {!isEditing && !meta.imageUrls?.length && (
             <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-lg flex-shrink-0"
               style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
               {meta.emoji || "⭐"}
@@ -517,7 +550,14 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
                 : `₦${s.price?.toLocaleString()}`}
             </p>
           </div>
-          <button onClick={() => setEditingId(isEditing ? null : s.id)}
+          <button onClick={() => {
+            if (isEditing) {
+              setEditingId(null);
+              setImages(meta.imageUrls || []);
+            } else {
+              setEditingId(s.id);
+            }
+          }}
             className="text-xs font-bold text-primary px-3 py-1.5 rounded-xl tap-scale"
             style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
             {isEditing ? "Cancel" : "Edit"}
@@ -532,7 +572,62 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
         </div>
         {isEditing && (
           <div className="px-4 pb-4 space-y-3 pt-1" style={{ borderTop: "1px solid hsl(var(--border))" }}>
-            <div className="flex gap-2 mt-3">
+            {/* Photos Management */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+                  Service Photos ({images.length}/3)
+                </Label>
+                <span className="text-[11px] font-semibold text-muted-foreground">
+                  {images.length > 0 ? "Tap change/remove" : "Optional (up to 3)"}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[0, 1, 2].map(slot => {
+                  const url = images[slot];
+                  const isLoading = uploading === slot;
+                  const canShowSlot = slot <= images.length && slot < 3;
+                  if (!canShowSlot) return null;
+                  return (
+                    <div key={slot} className="relative aspect-square">
+                      <input ref={photoRefs[slot]} type="file" accept="image/*" className="hidden"
+                        onChange={e => handlePhoto(e, slot)} />
+                      {url ? (
+                        <>
+                          <img src={url} alt="" className="w-full h-full object-cover rounded-2xl"
+                            style={{ boxShadow: "var(--shadow-flat)" }} />
+                          <button type="button" onClick={() => removePhoto(slot)}
+                            className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-destructive text-white rounded-full flex items-center justify-center tap-scale z-10"
+                            style={{ boxShadow: "1px 1px 4px rgba(0,0,0,0.3)" }}>
+                            <X className="w-3 h-3" />
+                          </button>
+                          <button type="button" onClick={() => !isLoading && photoRefs[slot].current?.click()}
+                            className="absolute bottom-1 right-1 bg-black/60 text-white rounded-lg px-1.5 py-0.5 text-[9px] font-bold tap-scale">
+                            Change
+                          </button>
+                        </>
+                      ) : (
+                        <button type="button" onClick={() => !isLoading && photoRefs[slot].current?.click()} disabled={isLoading}
+                          className="w-full h-full rounded-2xl flex flex-col items-center justify-center gap-1 transition-all tap-scale"
+                          style={{
+                            background: "hsl(var(--background))",
+                            boxShadow: "var(--shadow-inset)",
+                            border: "1.5px dashed hsl(var(--border))",
+                          }}>
+                          {isLoading
+                            ? <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            : <><Camera className="w-4 h-4 text-primary" /><span className="text-[10px] text-primary font-bold">{slot === 0 ? "Add Photo" : "+ Photo"}</span></>
+                          }
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Pricing Section */}
+            <div className="flex gap-2 mt-2">
               {(["fixed","range"] as const).map(t => (
                 <button key={t} onClick={() => setPt(t)}
                   className="flex-1 h-10 rounded-2xl text-xs font-bold tap-scale transition-all"
@@ -568,17 +663,28 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
                 <p className="text-[11px] text-destructive">Max must be ≤ 2× min (₦{twoX.toLocaleString()})</p>
               </div>
             )}
-            <div className="flex gap-2">
-              <button onClick={() => setEditingId(null)}
+            <div className="flex gap-2 pt-1">
+              <button onClick={() => {
+                setEditingId(null);
+                setImages(meta.imageUrls || []);
+              }}
                 className="flex-1 h-10 rounded-2xl text-xs font-bold tap-scale"
                 style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)", color: "hsl(var(--muted-foreground))" }}>
                 Cancel
               </button>
-              <button onClick={async () => { await onUpdatePrice(s.id, p, pt === "range" ? mp : undefined, pt); setEditingId(null); }}
-                disabled={!p || exceeds}
+              <button onClick={async () => {
+                setSaving(true);
+                try {
+                  await onUpdatePrice(s.id, p, pt === "range" ? mp : undefined, pt, images.filter(Boolean));
+                  setEditingId(null);
+                } finally {
+                  setSaving(false);
+                }
+              }}
+                disabled={!p || exceeds || uploading !== null || saving}
                 className="flex-1 h-10 rounded-2xl text-xs font-bold text-white tap-scale disabled:opacity-40"
                 style={{ background: "linear-gradient(145deg, hsl(220 80% 16%), hsl(220 100% 8%))", boxShadow: "var(--shadow-navy)" }}>
-                Save Price
+                {saving ? "Saving…" : "Save Changes"}
               </button>
             </div>
           </div>
@@ -878,11 +984,11 @@ const Dashboard = () => {
               });
             }}
             onDelete={deleteService}
-            onUpdatePrice={async (id, price, maxPrice, pricingType) => {
+            onUpdatePrice={async (id, price, maxPrice, pricingType, imageUrls) => {
               const cur = services.find(s => s.id === id);
               if (!cur) return;
               const prev = (() => { try { return JSON.parse(cur.description || "{}"); } catch { return {}; } })();
-              await updateService(id, { price, description: JSON.stringify({ ...prev, maxPrice, pricingType }) } as any);
+              await updateService(id, { price, description: JSON.stringify({ ...prev, maxPrice, pricingType, imageUrls: imageUrls !== undefined ? imageUrls : prev.imageUrls }) } as any);
             }}
           />
         )}
