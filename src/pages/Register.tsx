@@ -88,10 +88,6 @@ const Register = () => {
     setStep(2);
   };
 
-  const handleComingSoon = () => {
-    toast.info("Coming soon! This sign-in method will be available shortly.");
-  };
-
   const handleComplete = async (referralSource: ReferralSource) => {
     setLoading(true);
     let claimResult: PromoClaimResult | null = null;
@@ -273,22 +269,6 @@ const Register = () => {
               className="w-full h-14 rounded-xl bg-primary text-primary-foreground font-semibold text-base mb-6"
             >
               <Mail className="w-5 h-5 mr-2" /> Continue with email
-            </Button>
-
-            <div className="flex items-center gap-3 mb-6">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-sm text-muted-foreground">or</span>
-              <div className="flex-1 h-px bg-border" />
-            </div>
-
-            <Button
-              onClick={handleComingSoon}
-              className="w-full h-14 rounded-xl font-semibold text-base bg-foreground text-background hover:bg-foreground/90 mb-3"
-            >
-              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-              </svg>
-              Sign In with Apple
             </Button>
 
             <p className="text-center text-xs text-muted-foreground mt-6">

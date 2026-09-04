@@ -9,7 +9,7 @@
 
 import { useState, useEffect } from "react";
 import {
-  Search, Users, Phone, Mail, Calendar, ChevronRight,
+  Search, Users, Phone, Calendar, ChevronRight,
   X, TrendingUp, MessageSquare,
 } from "lucide-react";
 import AppLayout from "@/components/layout/AppLayout";
@@ -135,18 +135,6 @@ const ClientSheet = ({
                 </span>
               </button>
             )}
-            {client.email && (
-              <a href={`mailto:${client.email}`} className="flex items-center gap-3 tap-scale">
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)" }}>
-                  <Mail className="w-4 h-4 text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Email</p>
-                  <p className="text-sm text-foreground truncate">{client.email}</p>
-                </div>
-              </a>
-            )}
             {client.phone && (
               <a href={`tel:${client.phone}`} className="flex items-center gap-3 tap-scale">
                 <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
@@ -163,7 +151,7 @@ const ClientSheet = ({
                 </span>
               </a>
             )}
-            {!client.email && !client.phone && (
+            {!client.phone && (
               <p className="text-sm text-muted-foreground text-center py-2">No contact info</p>
             )}
           </div>
