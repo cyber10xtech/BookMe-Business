@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Lock, LogOut, FileText, Shield, MessageCircle, ChevronRight, ExternalLink, CheckCircle2, Circle, ChevronDown, ChevronUp, Trash2, Eye, EyeOff } from "lucide-react";
+import { Lock, LogOut, FileText, Shield, MessageCircle, ChevronRight, ExternalLink, CheckCircle2, Circle, ChevronDown, ChevronUp, Trash2, Eye, EyeOff, Zap } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -155,6 +155,24 @@ const MorePage = () => {
             )}
           </div>
         )}
+
+        {/* ── Subscription ── */}
+        <div className="bg-card rounded-2xl border border-border overflow-hidden mb-4">
+          <div className="px-5 py-3 border-b border-border">
+            <p className="text-xs font-bold text-primary uppercase tracking-widest">Subscription</p>
+          </div>
+          <button onClick={() => navigate("/subscription")}
+            className="w-full flex items-center gap-4 px-5 py-4 hover:bg-secondary/50 transition-colors">
+            <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="font-semibold text-foreground text-sm">Manage Subscription</p>
+              <p className="text-xs text-muted-foreground">View your active plan and upcoming upgrades</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-muted-foreground" />
+          </button>
+        </div>
 
         {/* ── Notification Preferences ── */}
         <div className="bg-card rounded-2xl border border-border overflow-hidden mb-4">

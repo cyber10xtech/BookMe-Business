@@ -67,11 +67,15 @@ const BookingLocation = ({ value }: { value?: string | null }) => {
   const location = useReadableLocation({ address: value });
   return <>{location}</>;
 };
-
-export const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete, onReschedule, accepting, rescheduling, navigate }: {
+export const BookingSheet = ({
+  booking, onClose,
+  onAccept, onReject, onComplete, accepting, rejecting, completing,
+  onReschedule, rescheduling,
+  navigate
+}: {
   booking: EnrichedBooking; onClose: () => void;
   onAccept: (id: string) => Promise<void>; onReject: (id: string, reason: string) => Promise<void>;
-  onComplete: (id: string) => Promise<void>; accepting: string|null;
+  onComplete: (id: string) => Promise<void>; accepting: string|null; rejecting: boolean; completing: boolean;
   onReschedule: (id: string, date: string, time: string, note: string) => Promise<void>; rescheduling: boolean;
   navigate: ReturnType<typeof useNavigate>;
 }) => {
@@ -96,11 +100,15 @@ export const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete,
     // Parse service range metadata if available
     const minPrice = booking.service_price || 0;
     let maxPrice = 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((booking as any).service_description) {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const parsed = JSON.parse((booking as any).service_description);
         if (parsed?.maxPrice) maxPrice = Number(parsed.maxPrice) || 0;
-      } catch (_) {}
+      } catch (_) {
+        // Ignore parse error
+      }
     }
 
     if (minPrice > 0 && val < minPrice) {
@@ -321,11 +329,18 @@ export const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete,
           {(booking.status === "confirmed" || booking.status === "accepted") && !showRejectConfirm && (
             <>
               <button onClick={() => onComplete(booking.id)}
-                className="w-full rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 tap-scale"
+                disabled={completing}
+                className="w-full rounded-2xl text-white font-bold text-sm flex items-center justify-center gap-2 tap-scale disabled:opacity-60"
                 style={{ height: 52, background: "linear-gradient(145deg, hsl(220 80% 16%), hsl(220 100% 8%))", boxShadow: "var(--shadow-navy)" }}>
-                <CheckCircle2 className="w-5 h-5" /> Mark as Completed
+                {completing ? (
+                  <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <CheckCircle2 className="w-5 h-5" />
+                )}
+                {completing ? "Completing..." : "Mark as Completed"}
               </button>
               <button onClick={() => setShowRejectConfirm(true)}
+                disabled={completing}
                 className="w-full h-12 mt-2 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 tap-scale"
                 style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)", color: "hsl(0 84% 55%)", border: "1.5px solid hsl(0 84% 70%)" }}>
                 <XCircle className="w-5 h-5" /> Cancel Booking
@@ -342,7 +357,7 @@ export const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete,
             <div className="space-y-3 rounded-2xl p-3" style={{ background: "hsl(var(--muted))" }}>
               <div className="grid grid-cols-2 gap-2"><input type="date" min={new Date().toISOString().split("T")[0]} value={newDate} onChange={e => setNewDate(e.target.value)} className="h-11 rounded-xl bg-background px-3 text-sm" /><input type="time" value={newTime} onChange={e => setNewTime(e.target.value)} className="h-11 rounded-xl bg-background px-3 text-sm" /></div>
               <textarea value={rescheduleNote} onChange={e => setRescheduleNote(e.target.value)} placeholder="Why are you rescheduling? (Required)" rows={2} className="w-full rounded-xl bg-background p-3 text-sm resize-none outline-none focus:ring-2 focus:ring-primary" />
-              <div className="flex gap-2"><button onClick={() => setShowReschedule(false)} className="flex-1 h-11 rounded-xl font-bold" style={{ boxShadow: "var(--shadow-raised)" }}>Keep Date</button><button onClick={() => onReschedule(booking.id, newDate, newTime, rescheduleNote)} disabled={rescheduling || !newDate || !newTime || !rescheduleNote.trim()} className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-60">{rescheduling ? "Checking…" : "Confirm"}</button></div>
+              <div className="flex gap-2"><button onClick={() => setShowReschedule(false)} className="flex-1 h-11 rounded-xl font-bold" style={{ boxShadow: "var(--shadow-raised)" }}>Keep Date</button><button onClick={() => onReschedule(booking.id, newDate, newTime, rescheduleNote)} disabled={rescheduling || !newDate || !newTime || !rescheduleNote.trim()} className="flex-1 h-11 rounded-xl bg-primary text-primary-foreground font-bold disabled:opacity-60">{rescheduling ? "Rescheduling..." : "Confirm"}</button></div>
             </div>
           )}
 
@@ -364,11 +379,15 @@ export const BookingSheet = ({ booking, onClose, onAccept, onReject, onComplete,
                 </button>
                 <button 
                   onClick={() => onReject(booking.id, rejectReason)} 
-                  disabled={!rejectReason.trim()}
+                  disabled={!rejectReason.trim() || rejecting}
                   className="flex-1 h-11 rounded-2xl text-white text-sm font-bold flex items-center justify-center gap-1.5 disabled:opacity-60 tap-scale"
                   style={{ background: "linear-gradient(135deg,#ef4444,#dc2626)", boxShadow: "3px 3px 10px rgba(239,68,68,0.35)" }}>
-                  <XCircle className="w-4 h-4" />
-                  Confirm
+                  {rejecting ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4" />
+                  )}
+                  {rejecting ? "Cancelling..." : "Confirm"}
                 </button>
               </div>
             </div>
@@ -404,7 +423,7 @@ const BookingCard = ({ booking, onTap, onAccept, onReject, accepting }: {
   const accent = accentColor[booking.status] ?? "#94a3b8";
 
   return (
-    <button onClick={onTap} className="w-full text-left rounded-3xl overflow-hidden tap-scale-sm animate-fade-in"
+    <div role="button" tabIndex={0} onClick={onTap} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onTap(); } }} className="w-full text-left rounded-3xl overflow-hidden tap-scale-sm animate-fade-in cursor-pointer"
       style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)" }}>
       {/* Status stripe */}
       <div className="h-1 w-full" style={{ background: accent }} />
@@ -463,29 +482,33 @@ const BookingCard = ({ booking, onTap, onAccept, onReject, accepting }: {
           </div>
         )}
       </div>
-    </button>
+    </div>
   );
 };
 
 /* ── Service Tab ─────────────────────────────────────────────────────────────── */
 const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   services: any[]; userId: string;
   onAdd: (d: AddServiceData) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
-  onUpdatePrice: (id: string, price: number, maxPrice: number|undefined, pricingType: "fixed"|"range", imageUrls?: string[]) => Promise<void>;
+  onUpdatePrice: (id: string, price: number, maxPrice: number|undefined, pricingType: "fixed"|"range"|"inspection_required", imageUrls?: string[]) => Promise<void>;
 }) => {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState<string|null>(null);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getMeta = (s: any) => { try { return JSON.parse(s.description || "{}"); } catch { return {}; } };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const isLocked = (s: any) => getMeta(s).isLocked === true || s.is_featured === true;
   const locked   = services.filter(isLocked);
   const custom   = services.filter(s => !isLocked(s));
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ServiceCard = ({ s }: { s: any }) => {
     const meta = getMeta(s);
     const isEditing = editingId === s.id;
-    const [pt, setPt]  = useState<"fixed"|"range">(meta.pricingType || "fixed");
+    const [pt, setPt]  = useState<"fixed"|"range"|"inspection_required">(meta.pricingType || "fixed");
     const [p, setP]    = useState<number>(s.price || 0);
     const [mp, setMp]  = useState<number|undefined>(meta.maxPrice);
     const [images, setImages] = useState<string[]>(meta.imageUrls || []);
@@ -627,10 +650,10 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
             </div>
 
             {/* Pricing Section */}
-            <div className="flex gap-2 mt-2">
-              {(["fixed","range"] as const).map(t => (
+            <div className="flex gap-2 mt-2 overflow-x-auto pb-1 scrollbar-hide">
+              {(["fixed","range","inspection_required"] as const).map(t => (
                 <button key={t} onClick={() => setPt(t)}
-                  className="flex-1 h-10 rounded-2xl text-xs font-bold tap-scale transition-all"
+                  className="flex-1 min-w-[80px] h-10 rounded-2xl text-xs font-bold tap-scale transition-all"
                   style={pt === t ? {
                     background: "linear-gradient(145deg, hsl(220 80% 16%), hsl(220 100% 8%))",
                     boxShadow: "var(--shadow-navy)", color: "white",
@@ -638,30 +661,34 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
                     background: "hsl(var(--background))", boxShadow: "var(--shadow-flat)",
                     color: "hsl(var(--muted-foreground))",
                   }}>
-                  {t === "fixed" ? "Fixed" : "Range"}
+                  {t === "fixed" ? "Fixed" : t === "range" ? "Range" : "Inspection"}
                 </button>
               ))}
             </div>
-            <div className={`grid gap-2 ${pt === "range" ? "grid-cols-2" : "grid-cols-1"}`}>
-              {[
-                { label: pt === "range" ? "Min" : "Price", val: p, set: setP },
-                ...(pt === "range" ? [{ label: `Max (≤₦${twoX.toLocaleString()})`, val: mp || 0, set: (v: number) => setMp(v) }] : []),
-              ].map(({ label, val, set }) => (
-                <div key={label} className="flex items-center rounded-2xl overflow-hidden h-11"
-                  style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-inset)" }}>
-                  <span className="w-9 flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0"
-                    style={{ borderRight: "1px solid hsl(var(--border))" }}>₦</span>
-                  <input type="number" value={val || ""} onChange={e => set(Number(e.target.value))}
-                    placeholder={label} className="flex-1 h-full bg-transparent px-2 text-sm outline-none" />
-                </div>
-              ))}
-            </div>
-            {exceeds && (
-              <div className="flex gap-2 items-start p-2 rounded-xl"
-                style={{ background: "hsl(0 60% 97%)", border: "1px solid hsl(0 84% 80%)" }}>
-                <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
-                <p className="text-[11px] text-destructive">Max must be ≤ 2× min (₦{twoX.toLocaleString()})</p>
+            {pt !== "inspection_required" && (
+            <>
+              <div className={`grid gap-2 ${pt === "range" ? "grid-cols-2" : "grid-cols-1"}`}>
+                {[
+                  { label: pt === "range" ? "Min" : "Price", val: p, set: setP },
+                  ...(pt === "range" ? [{ label: `Max (≤₦${twoX.toLocaleString()})`, val: mp || 0, set: (v: number) => setMp(v) }] : []),
+                ].map(({ label, val, set }) => (
+                  <div key={label} className="flex items-center rounded-2xl overflow-hidden h-11"
+                    style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-inset)" }}>
+                    <span className="w-9 flex items-center justify-center text-xs font-bold text-muted-foreground flex-shrink-0"
+                      style={{ borderRight: "1px solid hsl(var(--border))" }}>₦</span>
+                    <input type="number" value={val || ""} onChange={e => set(Number(e.target.value))}
+                      placeholder={label} className="flex-1 h-full bg-transparent px-2 text-sm outline-none" />
+                  </div>
+                ))}
               </div>
+              {exceeds && (
+                <div className="flex gap-2 items-start p-2 rounded-xl"
+                  style={{ background: "hsl(0 60% 97%)", border: "1px solid hsl(0 84% 80%)" }}>
+                  <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-destructive">Max must be ≤ 2× min (₦{twoX.toLocaleString()})</p>
+                </div>
+              )}
+            </>
             )}
             <div className="flex gap-2 pt-1">
               <button onClick={() => {
@@ -681,7 +708,7 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
                   setSaving(false);
                 }
               }}
-                disabled={!p || exceeds || uploading !== null || saving}
+                disabled={((pt !== "inspection_required" && !p) || exceeds) || uploading !== null || saving}
                 className="flex-1 h-10 rounded-2xl text-xs font-bold text-white tap-scale disabled:opacity-40"
                 style={{ background: "linear-gradient(145deg, hsl(220 80% 16%), hsl(220 100% 8%))", boxShadow: "var(--shadow-navy)" }}>
                 {saving ? "Saving…" : "Save Changes"}
@@ -718,8 +745,8 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
 const MetricCard = ({ icon, value, label, sub, onClick }: {
   icon: React.ReactNode; value: string|number; label: string; sub?: React.ReactNode; onClick?: () => void;
 }) => (
-  <button onClick={onClick}
-    className="text-left rounded-3xl p-4 tap-scale-sm transition-all"
+  <div onClick={onClick}
+    className={`text-left rounded-3xl p-4 transition-all ${onClick ? "tap-scale-sm cursor-pointer" : ""}`}
     style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)", backdropFilter: "blur(8px)" }}>
     <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3"
       style={{ background: "rgba(255,255,255,0.15)" }}>
@@ -729,7 +756,7 @@ const MetricCard = ({ icon, value, label, sub, onClick }: {
     <p className="text-[11px] text-white/70 mt-1 font-semibold">{label}</p>
     {sub && <div className="mt-2">{sub}</div>}
     {onClick && <p className="text-[10px] text-white/50 mt-1">Tap to view →</p>}
-  </button>
+  </div>
 );
 
 /* ── Main Dashboard ─────────────────────────────────────────────────────────── */
@@ -746,6 +773,8 @@ const Dashboard = () => {
   const [filter, setFilter]         = useState<FilterType>("all");
   const [selectedBooking, setSelected] = useState<EnrichedBooking|null>(null);
   const [accepting, setAccepting]   = useState<string|null>(null);
+  const [rejecting, setRejecting]   = useState<string|null>(null);
+  const [completing, setCompleting] = useState<string|null>(null);
   const [rescheduling, setRescheduling] = useState(false);
   const [revPeriod, setRevPeriod]   = useState<RevPeriod>("Month");
   const [showAll, setShowAll]       = useState(false);
@@ -789,15 +818,48 @@ const Dashboard = () => {
       .then(({ data }) => setPromotions((data as Promotion[]) || []));
   }, [profile]);
 
-  const handleAccept  = useCallback(async (id: string) => { setAccepting(id); await updateBookingStatus(id, "accepted"); toast.success("Booking confirmed! ✅"); setAccepting(null); setSelected(null); }, [updateBookingStatus]);
-  const handleReject  = useCallback(async (id: string, reason: string) => { await updateBookingStatus(id, "rejected", reason); toast.info("Booking declined."); setSelected(null); }, [updateBookingStatus]);
-  const handleComplete = useCallback(async (id: string) => { await updateBookingStatus(id, "completed"); toast.success("Booking complete! 🎉"); setSelected(null); }, [updateBookingStatus]);
+  const handleAccept  = useCallback(async (id: string) => {
+    setAccepting(id);
+    try {
+      await updateBookingStatus(id, "accepted");
+      toast.success("Booking confirmed! ✅");
+      setSelected(null);
+    } finally {
+      setAccepting(null);
+    }
+  }, [updateBookingStatus]);
+
+  const handleReject  = useCallback(async (id: string, reason: string) => {
+    setRejecting(id);
+    try {
+      await updateBookingStatus(id, "rejected", reason);
+      toast.info("Booking declined/cancelled.");
+      setSelected(null);
+    } finally {
+      setRejecting(null);
+    }
+  }, [updateBookingStatus]);
+
+  const handleComplete = useCallback(async (id: string) => {
+    setCompleting(id);
+    try {
+      await updateBookingStatus(id, "completed");
+      toast.success("Booking complete! 🎉");
+      setSelected(null);
+    } finally {
+      setCompleting(null);
+    }
+  }, [updateBookingStatus]);
+
   const handleReschedule = useCallback(async (id: string, date: string, time: string, note: string) => {
     setRescheduling(true);
-    const ok = await rescheduleBooking(id, date, time, note);
-    toast[ok ? "success" : "error"](ok ? "Booking rescheduled." : "That time is unavailable or the booking changed.");
-    if (ok) setSelected(null);
-    setRescheduling(false);
+    try {
+      const ok = await rescheduleBooking(id, date, time, note);
+      toast[ok ? "success" : "error"](ok ? "Booking rescheduled." : "That time is unavailable or the booking changed.");
+      if (ok) setSelected(null);
+    } finally {
+      setRescheduling(false);
+    }
   }, [rescheduleBooking]);
 
   const handleAddPromotion = async () => {
@@ -845,7 +907,7 @@ const Dashboard = () => {
     <AppLayout>
       {selectedBooking && (
         <BookingSheet booking={selectedBooking} onClose={() => setSelected(null)}
-          onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} onReschedule={handleReschedule} accepting={accepting} rescheduling={rescheduling} navigate={navigate} />
+          onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} onReschedule={handleReschedule} accepting={accepting} rejecting={rejecting === selectedBooking.id} completing={completing === selectedBooking.id} rescheduling={rescheduling} navigate={navigate} />
       )}
 
       {/* ── Hero header ── */}
@@ -988,7 +1050,8 @@ const Dashboard = () => {
               const cur = services.find(s => s.id === id);
               if (!cur) return;
               const prev = (() => { try { return JSON.parse(cur.description || "{}"); } catch { return {}; } })();
-              await updateService(id, { price, description: JSON.stringify({ ...prev, maxPrice, pricingType, imageUrls: imageUrls !== undefined ? imageUrls : prev.imageUrls }) } as any);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              await updateService(id, { price, pricing_type: pricingType, description: JSON.stringify({ ...prev, maxPrice, pricingType, imageUrls: imageUrls !== undefined ? imageUrls : prev.imageUrls }) } as any);
             }}
           />
         )}

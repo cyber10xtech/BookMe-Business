@@ -24,6 +24,7 @@ const ClientsPage = lazy(() => import("./pages/ClientsPage"));
 const ChatsPage = lazy(() => import("./pages/ChatsPage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const EditProfilePage = lazy(() => import("./pages/EditProfilePage"));
+const SubscriptionPage = lazy(() => import("./pages/SubscriptionPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
@@ -122,6 +123,7 @@ const AppInner = () => {
       <Route path="/chats" element={<AuthGuard><ChatsPage /></AuthGuard>} />
       <Route path="/notifications" element={<AuthGuard><NotificationsPage /></AuthGuard>} />
       <Route path="/edit-profile" element={<AuthGuard><EditProfilePage /></AuthGuard>} />
+      <Route path="/subscription" element={<AuthGuard><SubscriptionPage /></AuthGuard>} />
       <Route path="/messages" element={<Navigate to="/chats" replace />} />
       <Route path="*" element={<NotFound />} />
       </Routes>

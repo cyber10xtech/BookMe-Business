@@ -1,4 +1,4 @@
-import { X, LayoutDashboard, Calendar, Users, Home, MoreHorizontal, Bell, LogOut, ChevronRight } from "lucide-react";
+import { X, LayoutDashboard, Calendar, Users, Home, MoreHorizontal, Bell, LogOut, ChevronRight, Zap } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { icon: Users,           label: "Clients",        path: "/clients",   emoji: "👥" },
   { icon: Home,            label: "Profile",        path: "/home",      emoji: "🏠" },
   { icon: Bell,            label: "Notifications",  path: "/notifications", emoji: "🔔" },
+  { icon: Zap,             label: "Subscription",   path: "/subscription", emoji: "⚡" },
   { icon: MoreHorizontal,  label: "Settings",       path: "/more",      emoji: "⚙️" },
 ];
 

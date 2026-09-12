@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-export type PricingType = "fixed" | "range";
+export type PricingType = "fixed" | "range" | "inspection_required";
 
 export interface AddServiceData {
   name: string;
@@ -37,7 +37,7 @@ const NeuPricingBtn = ({ active, onClick, children }: { active: boolean; onClick
   <button
     type="button"
     onClick={onClick}
-    className="flex-1 h-11 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all duration-150 tap-scale select-none"
+    className="flex-1 h-11 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-150 tap-scale select-none px-2"
     style={active ? {
       background: "linear-gradient(145deg, hsl(220 80% 16%), hsl(220 100% 8%))",
       boxShadow: "var(--shadow-navy)",
@@ -48,7 +48,7 @@ const NeuPricingBtn = ({ active, onClick, children }: { active: boolean; onClick
       color: "hsl(var(--muted-foreground))",
     }}
   >
-    {active && <CheckCircle2 style={{ width: 15, height: 15 }} />}
+    {active && <CheckCircle2 style={{ width: 14, height: 14 }} />}
     {children}
   </button>
 );
@@ -100,14 +100,14 @@ const AddServiceSheet = ({ open, onClose, onSave, userId }: AddServiceSheetProps
     : null;
 
   const hasDesc = description.trim().length >= 10;
-  const canSave = name.trim() && priceNum > 0 && !exceeds && hasPhoto && hasDesc && uploading === null;
+  const canSave = name.trim() && (pricingType === "inspection_required" || priceNum > 0) && !exceeds && hasPhoto && hasDesc && uploading === null;
 
   const handleSave = async () => {
     if (!canSave) return;
     setSaving(true);
     try {
       await onSave({
-        name: name.trim(), duration: minsToLabel(durationMins), price: priceNum,
+        name: name.trim(), duration: minsToLabel(durationMins), price: pricingType === "inspection_required" ? 0 : priceNum,
         pricingType, maxPrice: pricingType === "range" && maxNum > 0 ? maxNum : undefined,
         description: description.trim(), imageUrls: images.filter(Boolean),
       });
@@ -157,13 +157,15 @@ const AddServiceSheet = ({ open, onClose, onSave, userId }: AddServiceSheetProps
           {/* Pricing type */}
           <div>
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 block">Pricing Type</Label>
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <NeuPricingBtn active={pricingType === "fixed"}  onClick={() => setPricing("fixed")}>Fixed Price</NeuPricingBtn>
               <NeuPricingBtn active={pricingType === "range"} onClick={() => setPricing("range")}>Price Range</NeuPricingBtn>
+              <NeuPricingBtn active={pricingType === "inspection_required"} onClick={() => setPricing("inspection_required")}>Inspection</NeuPricingBtn>
             </div>
           </div>
 
           {/* Price inputs */}
+          {pricingType !== "inspection_required" && (
           <div>
             <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2 block">
               {pricingType === "fixed" ? "Price" : "Price Range"}
@@ -212,24 +214,39 @@ const AddServiceSheet = ({ open, onClose, onSave, userId }: AddServiceSheetProps
                 )}
               </div>
             )}
-
-            {/* Live customer preview */}
-            {preview && (
-              <div className="mt-3 rounded-2xl p-4 animate-fade-in"
-                style={{ background: "hsl(142 40% 95%)", boxShadow: "var(--shadow-flat)", border: "1px solid hsl(142 40% 80%)" }}>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-4 h-4 rounded-full border-2 border-emerald-500 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  </div>
-                  <p className="text-xs font-bold text-emerald-800">Customers will see</p>
-                </div>
-                <p className="text-xs text-emerald-700 mb-1.5">
-                  Displayed as a {pricingType === "fixed" ? "fixed price" : "price range"}.
-                </p>
-                <p className="text-2xl font-extrabold text-emerald-900">{preview}</p>
-              </div>
-            )}
           </div>
+          )}
+
+          {/* Live customer preview */}
+          {pricingType === "inspection_required" ? (
+            <div className="mt-3 rounded-2xl p-4 animate-fade-in"
+              style={{ background: "hsl(142 40% 95%)", boxShadow: "var(--shadow-flat)", border: "1px solid hsl(142 40% 80%)" }}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-4 h-4 rounded-full border-2 border-emerald-500 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                </div>
+                <p className="text-xs font-bold text-emerald-800">Customers will see</p>
+              </div>
+              <p className="text-xs text-emerald-700 mb-1.5">
+                Displayed as requiring inspection before final quote.
+              </p>
+              <p className="text-lg font-extrabold text-emerald-900">Price depends on inspection</p>
+            </div>
+          ) : preview ? (
+            <div className="mt-3 rounded-2xl p-4 animate-fade-in"
+              style={{ background: "hsl(142 40% 95%)", boxShadow: "var(--shadow-flat)", border: "1px solid hsl(142 40% 80%)" }}>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="w-4 h-4 rounded-full border-2 border-emerald-500 flex items-center justify-center">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                </div>
+                <p className="text-xs font-bold text-emerald-800">Customers will see</p>
+              </div>
+              <p className="text-xs text-emerald-700 mb-1.5">
+                Displayed as {pricingType === "fixed" ? "a fixed price" : "a price range"}.
+              </p>
+              <p className="text-2xl font-extrabold text-emerald-900">{preview}</p>
+            </div>
+          ) : null}
 
           {/* Duration */}
           <div>

@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { getCategoryConfig, type LockedService } from "@/lib/categoryServices";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-export type PricingType = "fixed" | "range";
+export type PricingType = "fixed" | "range" | "inspection_required";
 
 export interface ServiceEntry {
   id: string;
@@ -43,8 +43,8 @@ function buildLockedEntries(lockedServices: LockedService[]): ServiceEntry[] {
     name: ls.name,
     emoji: ls.emoji,
     duration: ls.duration,
-    pricingType: "fixed" as PricingType,
-    price: 500, // ₦500 default to trigger user interaction
+    pricingType: (ls.pricingType as PricingType) || "fixed",
+    price: ls.pricingType === "inspection_required" ? 0 : 500, // ₦500 default to trigger user interaction
     isLocked: true,
     lockedKey: ls.key,
     description: "",
@@ -87,7 +87,14 @@ const PriceInputs = ({
         ))}
       </div>
 
-      {pricingType === "fixed" ? (
+      {pricingType === "inspection_required" ? (
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
+          <p className="text-xs text-blue-700 font-semibold">⊙ Inspection Required</p>
+          <p className="text-[11px] text-blue-600 mt-0.5">
+            Customers will see "Price after inspection". You do not need to set a price now.
+          </p>
+        </div>
+      ) : pricingType === "fixed" ? (
         <div>
           <Label className="text-xs text-muted-foreground">Price</Label>
           <div className="relative mt-1">
@@ -139,10 +146,14 @@ const PriceInputs = ({
       <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
         <p className="text-xs text-emerald-700 font-semibold">⊙ Customers will see</p>
         <p className="text-[11px] text-emerald-600 mt-0.5">
-          {pricingType === "fixed" ? "Your service will be displayed as a fixed price." : "Your service will be displayed as a price range."}
+          {pricingType === "fixed" ? "Your service will be displayed as a fixed price." : 
+           pricingType === "inspection_required" ? "Your service will be displayed as requiring inspection." :
+           "Your service will be displayed as a price range."}
         </p>
         <p className="text-sm font-bold text-emerald-800 mt-1">
-          {pricingType === "fixed"
+          {pricingType === "inspection_required"
+            ? "Price after inspection"
+            : pricingType === "fixed"
             ? price > 0 ? `₦${price.toLocaleString()}` : "₦___"
             : price > 0 && maxPrice && maxPrice <= twoXLimit
               ? `₦${price.toLocaleString()} – ₦${maxPrice.toLocaleString()}`
@@ -223,7 +234,10 @@ const ServiceDialog = ({ dialogState, onSave, onClose }: {
 
   const twoX = draft.price * 2;
   const maxExceeds = draft.pricingType === "range" && draft.maxPrice !== undefined && draft.maxPrice > twoX && draft.price > 0;
-  const canSave = draft.name.trim().length > 0 && draft.price > 0 && draft.imageDataUrls.length >= 1 && !maxExceeds;
+  const canSave = draft.name.trim().length > 0 && 
+                  (draft.pricingType === "inspection_required" || draft.price > 0) && 
+                  draft.imageDataUrls.length >= 1 && 
+                  !maxExceeds;
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -375,7 +389,7 @@ const StepServices = ({ categoryId, services, onChange, onNext, onBack }: Props)
         </p>
         {lockedServices.map((svc) => {
           const hasPhoto = svc.imageDataUrls.length > 0;
-          const hasRealPrice = svc.price > 500;
+          const hasRealPrice = svc.pricingType === "inspection_required" || svc.price > 500;
           const isSetup = hasPhoto && hasRealPrice;
           return (
             <button
@@ -392,7 +406,7 @@ const StepServices = ({ categoryId, services, onChange, onNext, onBack }: Props)
               <div className="flex-1">
                 <p className="font-semibold text-foreground text-sm">{svc.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {svc.duration} · ₦{svc.price.toLocaleString()}
+                  {svc.duration} · {svc.pricingType === "inspection_required" ? "Price after inspection" : `₦${svc.price.toLocaleString()}`}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -419,7 +433,8 @@ const StepServices = ({ categoryId, services, onChange, onNext, onBack }: Props)
               <div className="flex-1">
                 <p className="font-semibold text-foreground text-sm">{svc.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  {svc.duration} · {svc.pricingType === "range" && svc.maxPrice
+                  {svc.duration} · {svc.pricingType === "inspection_required" ? "Price after inspection" : 
+                   svc.pricingType === "range" && svc.maxPrice
                     ? `₦${svc.price.toLocaleString()} – ₦${svc.maxPrice.toLocaleString()}`
                     : `₦${svc.price.toLocaleString()}`}
                 </p>

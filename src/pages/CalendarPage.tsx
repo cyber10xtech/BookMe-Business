@@ -38,6 +38,8 @@ const CalendarPage = () => {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
   const [selectedBooking, setSelectedBooking] = useState<EnrichedBooking|null>(null);
   const [accepting, setAccepting] = useState<string|null>(null);
+  const [rejecting, setRejecting] = useState<string|null>(null);
+  const [completing, setCompleting] = useState<string|null>(null);
   const [rescheduling, setRescheduling] = useState(false);
 
   const year  = currentDate.getFullYear();
@@ -57,19 +59,50 @@ const CalendarPage = () => {
   const rem = cells.length % 7;
   if (rem > 0) for (let d = 1; d <= 7 - rem; d++) cells.push({ day: d, current: false, date: "" });
 
+
   const byDate: Record<string, EnrichedBooking[]> = {};
   bookings.forEach(b => { if (!byDate[b.booking_date]) byDate[b.booking_date] = []; byDate[b.booking_date].push(b); });
   const selectedBookings = (byDate[selectedDate] || []).sort((a, b) => a.booking_time > b.booking_time ? 1 : -1);
 
-  const handleAccept = useCallback(async (id: string) => { setAccepting(id); await updateBookingStatus(id, "accepted"); toast.success("Confirmed ✅"); setAccepting(null); setSelectedBooking(null); }, [updateBookingStatus]);
-  const handleReject = useCallback(async (id: string, reason: string) => { await updateBookingStatus(id, "rejected", reason); toast.info("Declined."); setSelectedBooking(null); }, [updateBookingStatus]);
-  const handleComplete = useCallback(async (id: string) => { await updateBookingStatus(id, "completed"); toast.success("Completed 🎉"); setSelectedBooking(null); }, [updateBookingStatus]);
+  const handleAccept = useCallback(async (id: string) => { 
+    setAccepting(id); 
+    try {
+      await updateBookingStatus(id, "accepted"); 
+      toast.success("Confirmed ✅"); 
+      setSelectedBooking(null); 
+    } finally {
+      setAccepting(null); 
+    }
+  }, [updateBookingStatus]);
+  const handleReject = useCallback(async (id: string, reason: string) => { 
+    setRejecting(id); 
+    try {
+      await updateBookingStatus(id, "rejected", reason); 
+      toast.info("Declined."); 
+      setSelectedBooking(null); 
+    } finally {
+      setRejecting(null); 
+    }
+  }, [updateBookingStatus]);
+  const handleComplete = useCallback(async (id: string) => { 
+    setCompleting(id); 
+    try {
+      await updateBookingStatus(id, "completed"); 
+      toast.success("Completed 🎉"); 
+      setSelectedBooking(null); 
+    } finally {
+      setCompleting(null); 
+    }
+  }, [updateBookingStatus]);
   const handleReschedule = useCallback(async (id: string, date: string, time: string, note: string) => {
     setRescheduling(true);
-    const ok = await rescheduleBooking(id, date, time, note);
-    toast[ok ? "success" : "error"](ok ? "Booking rescheduled." : "That time is unavailable or the booking changed.");
-    if (ok) setSelectedBooking(null);
-    setRescheduling(false);
+    try {
+      const ok = await rescheduleBooking(id, date, time, note);
+      toast[ok ? "success" : "error"](ok ? "Booking rescheduled." : "That time is unavailable or the booking changed.");
+      if (ok) setSelectedBooking(null);
+    } finally {
+      setRescheduling(false);
+    }
   }, [rescheduleBooking]);
 
   const monthStats = {
@@ -94,7 +127,7 @@ const CalendarPage = () => {
     <AppLayout>
       {selectedBooking && (
         <BookingSheet booking={selectedBooking} onClose={() => setSelectedBooking(null)}
-          onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} onReschedule={handleReschedule} accepting={accepting} rescheduling={rescheduling} navigate={navigate} />
+          onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} onReschedule={handleReschedule} accepting={accepting} rejecting={rejecting === selectedBooking.id} completing={completing === selectedBooking.id} rescheduling={rescheduling} navigate={navigate} />
       )}
 
       <div className="px-5 pt-5 pb-8">
@@ -259,10 +292,11 @@ const CalendarPage = () => {
                       )}
                       {(b.status === "confirmed" || b.status === "accepted") && (
                         <div className="mt-3 pt-3" style={{ borderTop: "1px solid hsl(var(--border))" }} onClick={e => e.stopPropagation()}>
-                          <button onClick={() => handleComplete(b.id)}
-                            className="w-full h-9 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 tap-scale"
+                          <button onClick={() => handleComplete(b.id)} disabled={completing === b.id}
+                            className="w-full h-9 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 tap-scale disabled:opacity-60"
                             style={{ background: "hsl(var(--background))", boxShadow: "var(--shadow-raised)", color: "hsl(var(--primary))" }}>
-                            <CheckCircle2 className="w-3.5 h-3.5" /> Mark as Completed
+                            {completing === b.id ? <span className="w-3.5 h-3.5 border-2 border-primary border-t-transparent rounded-full animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                            {completing === b.id ? "Completing..." : "Mark as Completed"}
                           </button>
                         </div>
                       )}

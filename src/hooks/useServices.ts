@@ -35,18 +35,19 @@ export const useServices = () => {
       duration: service.duration,
       duration_minutes: parseDurationToMinutes(service.duration),
       price: service.price,
-      description: JSON.stringify({
-        pricingType: service.pricingType || "fixed",
-        maxPrice: service.maxPrice,
-        emoji: service.emoji || "⭐",
-        isLocked: false,
-        imageUrls: service.imageUrls || [],
-        description: service.description || "",
-      }),
+      pricing_type: service.pricingType || "fixed",
+      description: service.description || "",
       category: service.category || profile.category || "general",
       is_active: true,
     } as any);
-    if (error) { toast.error("Failed to add service: " + error.message); return; }
+    if (error) { 
+      if (error.message?.includes("pricing_type") || error.code === "PGRST204" || error.code === "42703") {
+        toast.error("Saving variable/inspection pricing requires the pending database migration.");
+      } else {
+        toast.error("Failed to add service: " + error.message);
+      }
+      return; 
+    }
     await fetchServices();
   };
 

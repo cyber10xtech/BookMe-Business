@@ -38,7 +38,7 @@ export interface EditServiceModalProps {
     durationMins: number;
     price: number;
     maxPrice?: number;
-    pricingType: "fixed" | "range";
+    pricingType: "fixed" | "range" | "inspection_required";
     emoji: string;
     descText: string;
     imageUrls: string[];
@@ -54,19 +54,19 @@ export const EditServiceModal = ({ service, userId, open, onClose, onSave }: Edi
     }
   }, [service.description]);
 
-  const isDefault = service.is_featured === true || meta.isLocked === true;
+  const isDefault = service.is_featured === true;
 
   // Form state initialized ONLY when modal mounts for this specific service
   const [name, setName] = useState<string>(service.name || "");
   const [durationMins, setDurationMins] = useState<number>(
     service.duration_minutes || parseDurationToMinutes(service.duration || "60 mins")
   );
-  const [pricingType, setPricingType] = useState<"fixed" | "range">(meta.pricingType || "fixed");
+  const [pricingType, setPricingType] = useState<"fixed" | "range" | "inspection_required">(service.pricing_type as any || "fixed");
   const [price, setPrice] = useState<number>(service.price || 0);
-  const [maxPrice, setMaxPrice] = useState<number | undefined>(meta.maxPrice);
-  const [emoji, setEmoji] = useState<string>(meta.emoji || "⭐");
-  const [descText, setDescText] = useState<string>(meta.description || "");
-  const [images, setImages] = useState<string[]>(meta.imageUrls || []);
+  const [maxPrice, setMaxPrice] = useState<number | undefined>(undefined);
+  const [emoji, setEmoji] = useState<string>("⭐");
+  const [descText, setDescText] = useState<string>(service.description || "");
+  const [images, setImages] = useState<string[]>([]);
   const [uploadingSlot, setUploadingSlot] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -285,7 +285,7 @@ export const EditServiceModal = ({ service, userId, open, onClose, onSave }: Edi
               Pricing Mode
             </Label>
             <div className="flex gap-2 mb-2">
-              {(["fixed", "range"] as const).map((t) => (
+              {(["fixed", "range", "inspection_required"] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -295,12 +295,13 @@ export const EditServiceModal = ({ service, userId, open, onClose, onSave }: Edi
                       : "bg-secondary text-muted-foreground border-border hover:bg-secondary/80"
                     }`}
                 >
-                  {t === "fixed" ? "Fixed Price" : "Price Range"}
+                  {t === "fixed" ? "Fixed Price" : t === "range" ? "Price Range" : "Inspection"}
                 </button>
               ))}
             </div>
 
-            <div className={`grid gap-2 ${pricingType === "range" ? "grid-cols-2" : "grid-cols-1"}`}>
+            {pricingType !== "inspection_required" && (
+              <div className={`grid gap-2 ${pricingType === "range" ? "grid-cols-2" : "grid-cols-1"}`}>
               {[
                 { label: pricingType === "range" ? "Min Price (₦)" : "Price (₦)", val: price, set: setPrice },
                 ...(pricingType === "range"
@@ -328,8 +329,9 @@ export const EditServiceModal = ({ service, userId, open, onClose, onSave }: Edi
                 </div>
               ))}
             </div>
+            )}
 
-            {exceeds && (
+            {exceeds && pricingType !== "inspection_required" && (
               <div className="flex gap-2 items-start p-2 rounded-xl mt-2 bg-destructive/10 border border-destructive/30">
                 <AlertCircle className="w-3.5 h-3.5 text-destructive flex-shrink-0 mt-0.5" />
                 <p className="text-[11px] text-destructive font-medium">
@@ -368,7 +370,7 @@ export const EditServiceModal = ({ service, userId, open, onClose, onSave }: Edi
                   setSaving(false);
                 }
               }}
-              disabled={!name.trim() || !price || exceeds || uploadingSlot !== null || saving}
+              disabled={(!name.trim() || (!price && pricingType !== "inspection_required") || exceeds || uploadingSlot !== null || saving)}
               className="flex-1 h-11 rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-40"
             >
               {saving ? "Saving…" : "Save Changes"}

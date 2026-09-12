@@ -11,6 +11,7 @@ export interface LockedService {
   emoji: string;
   defaultPrice: number; // suggested starting price in NGN
   duration: string;
+  pricingType?: string;
 }
 
 export interface SubService {
@@ -18,6 +19,7 @@ export interface SubService {
   emoji: string;
   suggestedPrice: number;
   duration: string;
+  pricingType?: string;
 }
 
 export interface CategoryServiceConfig {
@@ -219,6 +221,7 @@ const CONFIG: Record<string, CategoryServiceConfig> = {
       { key: "diagnostics", name: "Car Diagnostics", emoji: "🔬", defaultPrice: 5000, duration: "1 hr" },
       { key: "oil_change", name: "Oil Change", emoji: "🛢️", defaultPrice: 8000, duration: "30 mins" },
       { key: "tyre_change", name: "Tyre Change / Repair", emoji: "🔄", defaultPrice: 5000, duration: "30 mins" },
+      { key: "car_inspection", name: "Car inspection", emoji: "📋", defaultPrice: 0, duration: "1 hr", pricingType: "inspection_required" },
     ],
     subServices: [
       { name: "Engine Repair", emoji: "⚙️", suggestedPrice: 50000, duration: "3 hrs" },

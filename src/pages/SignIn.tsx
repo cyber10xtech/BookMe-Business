@@ -118,7 +118,7 @@ const SignIn = () => {
               className="w-12 h-full flex items-center justify-center flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
               aria-label={showPasswordValue ? "Hide password" : "Show password"}
             >
-              {showPasswordValue ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPasswordValue ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             </button>
           </div>
           <button
