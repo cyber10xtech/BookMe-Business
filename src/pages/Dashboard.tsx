@@ -14,6 +14,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import AppLayout from "@/components/layout/AppLayout";
 import ProfileCompletionBar from "@/components/dashboard/ProfileCompletionBar";
 import AddServiceSheet, { type AddServiceData } from "@/components/dashboard/AddServiceSheet";
+import { AttendanceConfirmationModal } from "@/components/AttendanceConfirmationModal";
+import { selectOldestPendingBooking } from "@/lib/attendance";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useServices } from "@/hooks/useServices";
@@ -100,11 +102,9 @@ export const BookingSheet = ({
     // Parse service range metadata if available
     const minPrice = booking.service_price || 0;
     let maxPrice = 0;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    if ((booking as any).service_description) {
+    if ((booking as Record<string, unknown>).service_description) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const parsed = JSON.parse((booking as any).service_description);
+        const parsed = JSON.parse((booking as Record<string, unknown>).service_description as string);
         if (parsed?.maxPrice) maxPrice = Number(parsed.maxPrice) || 0;
       } catch (_) {
         // Ignore parse error
@@ -488,8 +488,7 @@ const BookingCard = ({ booking, onTap, onAccept, onReject, accepting }: {
 
 /* ── Service Tab ─────────────────────────────────────────────────────────────── */
 const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  services: any[]; userId: string;
+  services: Record<string, unknown>[]; userId: string;
   onAdd: (d: AddServiceData) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onUpdatePrice: (id: string, price: number, maxPrice: number|undefined, pricingType: "fixed"|"range"|"inspection_required", imageUrls?: string[]) => Promise<void>;
@@ -497,15 +496,12 @@ const ServiceTab = ({ services, userId, onAdd, onDelete, onUpdatePrice }: {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [editingId, setEditingId] = useState<string|null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getMeta = (s: any) => { try { return JSON.parse(s.description || "{}"); } catch { return {}; } };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const isLocked = (s: any) => getMeta(s).isLocked === true || s.is_featured === true;
+  const getMeta = (s: Record<string, unknown>) => { try { return JSON.parse((s.description as string) || "{}"); } catch { return {}; } };
+  const isLocked = (s: Record<string, unknown>) => getMeta(s).isLocked === true || s.is_featured === true;
   const locked   = services.filter(isLocked);
   const custom   = services.filter(s => !isLocked(s));
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const ServiceCard = ({ s }: { s: any }) => {
+  const ServiceCard = ({ s }: { s: Record<string, unknown> }) => {
     const meta = getMeta(s);
     const isEditing = editingId === s.id;
     const [pt, setPt]  = useState<"fixed"|"range"|"inspection_required">(meta.pricingType || "fixed");
@@ -765,7 +761,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { services, addService, updateService, deleteService } = useServices();
-  const { bookings, stats, updateBookingStatus, rescheduleBooking } = useBookings();
+  const { bookings, stats, updateBookingStatus, rescheduleBooking, fetchBookings } = useBookings();
   const { percentage, missingItems, completedItems, isShadowBanned } = useProfileCompletion(profile, services.length);
   const { reviews, loading: reviewsLoading, averageRating, ratingBreakdown, totalReviews } = useReviews(profile?.id);
 
@@ -875,6 +871,8 @@ const Dashboard = () => {
     toast.success("Promotion created!");
   };
 
+  const unresolvedBooking = selectOldestPendingBooking(bookings);
+
   const today = new Date().toISOString().split("T")[0];
   const filteredBookings = (() => {
     switch (filter) {
@@ -908,6 +906,15 @@ const Dashboard = () => {
       {selectedBooking && (
         <BookingSheet booking={selectedBooking} onClose={() => setSelected(null)}
           onAccept={handleAccept} onReject={handleReject} onComplete={handleComplete} onReschedule={handleReschedule} accepting={accepting} rejecting={rejecting === selectedBooking.id} completing={completing === selectedBooking.id} rescheduling={rescheduling} navigate={navigate} />
+      )}
+
+      {unresolvedBooking && (
+        <AttendanceConfirmationModal
+          booking={unresolvedBooking}
+          onSuccess={() => {
+            fetchBookings();
+          }}
+        />
       )}
 
       {/* ── Hero header ── */}
@@ -1050,8 +1057,7 @@ const Dashboard = () => {
               const cur = services.find(s => s.id === id);
               if (!cur) return;
               const prev = (() => { try { return JSON.parse(cur.description || "{}"); } catch { return {}; } })();
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              await updateService(id, { price, pricing_type: pricingType, description: JSON.stringify({ ...prev, maxPrice, pricingType, imageUrls: imageUrls !== undefined ? imageUrls : prev.imageUrls }) } as any);
+              await updateService(id, { price, pricing_type: pricingType, description: JSON.stringify({ ...prev, maxPrice, pricingType, imageUrls: imageUrls !== undefined ? imageUrls : prev.imageUrls }) } as unknown as Parameters<typeof updateService>[1]);
             }}
           />
         )}

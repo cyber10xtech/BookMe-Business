@@ -103,6 +103,8 @@ export interface Booking {
   customer_phone: string | null;
   service_name: string | null;
   price: number | null;
+  provider_attendance_outcome: "attended" | "no_show" | null;
+  attendance_confirmed_at: string | null;
 }
 
 export interface Client {
@@ -219,3 +221,4 @@ export interface Favorite {
   provider_id: string;
   created_at: string;
 }
+
