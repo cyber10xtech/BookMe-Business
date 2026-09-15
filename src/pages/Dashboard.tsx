@@ -15,7 +15,7 @@ import AppLayout from "@/components/layout/AppLayout";
 import ProfileCompletionBar from "@/components/dashboard/ProfileCompletionBar";
 import AddServiceSheet, { type AddServiceData } from "@/components/dashboard/AddServiceSheet";
 import { AttendanceConfirmationModal } from "@/components/AttendanceConfirmationModal";
-import { selectOldestPendingBooking } from "@/lib/attendance";
+import { useAttendancePopup } from "@/hooks/useAttendancePopup";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile } from "@/hooks/useProfile";
 import { useServices } from "@/hooks/useServices";
@@ -871,7 +871,7 @@ const Dashboard = () => {
     toast.success("Promotion created!");
   };
 
-  const unresolvedBooking = selectOldestPendingBooking(bookings);
+  const { currentBooking: unresolvedBooking, dismissCurrent: dismissAttendance } = useAttendancePopup({ bookings, fetchBookings });
 
   const today = new Date().toISOString().split("T")[0];
   const filteredBookings = (() => {
@@ -914,6 +914,7 @@ const Dashboard = () => {
           onSuccess={() => {
             fetchBookings();
           }}
+          onDismiss={dismissAttendance}
         />
       )}
 

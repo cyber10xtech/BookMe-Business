@@ -3,19 +3,21 @@ import { format } from "date-fns";
 import { Booking } from "@/lib/database.types";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { Loader2, Calendar, Clock, User, Scissors, CreditCard, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, Calendar, Clock, User, Scissors, CreditCard, CheckCircle, XCircle, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface AttendanceConfirmationModalProps {
   booking: Booking;
   onSuccess: () => void;
+  onDismiss: () => void;
 }
 
-export const AttendanceConfirmationModal = ({ booking, onSuccess }: AttendanceConfirmationModalProps) => {
+export const AttendanceConfirmationModal = ({ booking, onSuccess, onDismiss }: AttendanceConfirmationModalProps) => {
   const [submitting, setSubmitting] = useState(false);
 
   const handleConfirm = async (outcome: "attended" | "no_show") => {
+    if (submitting) return; // Prevent duplicate taps
     setSubmitting(true);
     try {
       const { error } = await supabase.rpc("confirm_booking_attendance", {
@@ -27,11 +29,16 @@ export const AttendanceConfirmationModal = ({ booking, onSuccess }: AttendanceCo
         throw error;
       }
 
-      toast.success("Attendance outcome recorded");
+      toast.success(
+        outcome === "attended"
+          ? "Attendance confirmed ✅"
+          : "No-show recorded"
+      );
       onSuccess();
     } catch (err: unknown) {
       const error = err as Error;
       toast.error(error.message || "Failed to record outcome. Please try again.");
+      // Keep the modal open on failure — do NOT call onSuccess
     } finally {
       setSubmitting(false);
     }
@@ -87,7 +94,7 @@ export const AttendanceConfirmationModal = ({ booking, onSuccess }: AttendanceCo
               disabled={submitting}
             >
               {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle className="w-5 h-5" />}
-              Confirm customer attended
+              Attended
             </Button>
             
             <Button
@@ -97,7 +104,17 @@ export const AttendanceConfirmationModal = ({ booking, onSuccess }: AttendanceCo
               disabled={submitting}
             >
               {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <XCircle className="w-5 h-5" />}
-              Customer did not come
+              No-show
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-full h-10 text-gray-500 hover:text-gray-700 text-sm font-medium flex items-center justify-center gap-2"
+              onClick={onDismiss}
+              disabled={submitting}
+            >
+              <Timer className="w-4 h-4" />
+              Maybe Later
             </Button>
           </div>
 
@@ -109,4 +126,3 @@ export const AttendanceConfirmationModal = ({ booking, onSuccess }: AttendanceCo
     </div>
   );
 };
-
