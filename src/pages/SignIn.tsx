@@ -19,25 +19,83 @@ const SignIn = () => {
   const [signingIn, setLoading]          = useState(false);
   const navigate = useNavigate();
 
-  // Already authenticated — skip the sign-in screen entirely
-  if (!loading && user) return <Navigate to="/dashboard" replace />;
+  // Already authenticated — check role before redirecting
+  useEffect(() => {
+    if (!loading && user) {
+      supabase
+        .from("profiles")
+        .select("role, onboarding_status")
+        .eq("user_id", user.id)
+        .maybeSingle()
+        .then(({ data: prof }) => {
+          if (prof?.role === "provider") {
+            navigate("/dashboard", { replace: true });
+          } else if (
+            prof?.onboarding_status === "incomplete" ||
+            prof?.onboarding_status === "draft" ||
+            prof?.onboarding_status === "needs_correction" ||
+            user.user_metadata?.account_type === "provider" ||
+            user.user_metadata?.role === "provider"
+          ) {
+            navigate("/register", { replace: true, state: { resuming: true } });
+          }
+        });
+    }
+  }, [loading, user, navigate]);
 
   const handleContinue = () => { if (!email) return; setShowPass(true); };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("Please enter your email address first.");
+      return;
+    }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success("Password reset instructions sent to your email.");
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed to send reset email");
+    }
+  };
 
   const handleSignIn = async () => {
     if (!email || !password) return;
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     if (error) { setLoading(false); toast.error(error.message); return; }
 
     const { data: profile } = await supabase
-      .from("profiles").select("role").eq("user_id", data.user.id).single();
+      .from("profiles")
+      .select("role, onboarding_status, business_name, category, phone, address")
+      .eq("user_id", data.user.id)
+      .maybeSingle();
 
     if (!profile || profile.role !== "provider") {
+      // Check if this account has incomplete onboarding or business intent
+      const hasBusinessIntent =
+        profile?.onboarding_status === "incomplete" ||
+        profile?.onboarding_status === "draft" ||
+        profile?.onboarding_status === "needs_correction" ||
+        data.user.user_metadata?.account_type === "provider" ||
+        data.user.user_metadata?.role === "provider";
+
+      if (hasBusinessIntent) {
+        localStorage.setItem(KEEP_SIGNED_IN_KEY, keepSignedIn ? "1" : "0");
+        sessionStorage.setItem("bookme_just_signed_in", "1");
+        setLoading(false);
+        toast.info("Resuming your business onboarding...");
+        navigate("/register", { state: { resuming: true, profile } });
+        return;
+      }
+
       await supabase.auth.signOut();
       setLoading(false);
-      toast.error("This app is for business accounts only.");
+      toast.error("This app is for business accounts only. Please use the BookMe Customer app.");
       return;
     }
 
@@ -122,8 +180,9 @@ const SignIn = () => {
             </button>
           </div>
           <button
+            type="button"
             className="text-xs text-primary font-semibold mt-2 ml-1 tap-scale"
-            onClick={() => toast.info("Password reset coming soon.")}
+            onClick={handleForgotPassword}
           >
             Forgot password?
           </button>

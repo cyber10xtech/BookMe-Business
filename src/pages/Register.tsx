@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,10 +78,61 @@ const Register = () => {
   });
   const [location, setLocation] = useState({ address: "", city: "", state: "", latitude: undefined as number | undefined, longitude: undefined as number | undefined });
   const [category, setCategory] = useState<CategoryId | null>(null);
+  const [categoryLocked, setCategoryLocked] = useState(false);
   const [services, setServices] = useState<ServiceEntry[]>([]);
   const [hours, setHours] = useState<Record<string, DayHours>>(defaultHours());
   const [showWelcomePromo, setShowWelcomePromo] = useState(false);
   const [promoClaim, setPromoClaim] = useState<PromoClaimResult | null>(null);
+
+  const routerLocation = useLocation();
+  const isSubmittingRef = useRef(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        setEmail(user.email || "");
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (prof) {
+          if (prof.role === "provider" && prof.onboarding_status === "complete") {
+            navigate("/dashboard", { replace: true });
+            return;
+          }
+          setAboutYou((prev) => ({
+            ...prev,
+            businessName: prof.business_name || user.user_metadata?.business_name || prev.businessName,
+            ownerName: prof.full_name || user.user_metadata?.full_name || prev.ownerName,
+            phone: prof.phone || user.user_metadata?.phone || prev.phone,
+          }));
+          if (prof.address || prof.city || prof.state) {
+            setLocation({
+              address: prof.address || "",
+              city: prof.city || "",
+              state: prof.state || "",
+              latitude: prof.latitude || undefined,
+              longitude: prof.longitude || undefined,
+            });
+          }
+          if (prof.category) {
+            setCategory(prof.category as CategoryId);
+          }
+          if (prof.category_locked) {
+            setCategoryLocked(true);
+          }
+          if (prof.business_hours && typeof prof.business_hours === "object") {
+            setHours(prof.business_hours as Record<string, DayHours>);
+          }
+          if ((routerLocation.state as any)?.resuming) {
+            setStep(2);
+          }
+        }
+      }
+    });
+  }, [navigate, routerLocation.state]);
 
   const handleEmailContinue = () => {
     if (!email) return;
@@ -89,145 +140,190 @@ const Register = () => {
   };
 
   const handleComplete = async (referralSource: ReferralSource) => {
+    if (isSubmittingRef.current) return;
+
+    // Strict validation before submission
+    if (!category) {
+      toast.error("Please select a valid business category.");
+      setStep(4);
+      return;
+    }
+
+    const hasEnabledHour = Object.values(hours).some((h) => h.enabled);
+    if (!hasEnabledHour) {
+      toast.error("Please enable at least one business day in your business hours.");
+      setStep(6);
+      return;
+    }
+
+    if (!aboutYou.businessName.trim() || !aboutYou.ownerName.trim() || !aboutYou.phone.trim()) {
+      toast.error("Please fill in all required business details.");
+      setStep(2);
+      return;
+    }
+
+    if (!location.address.trim() || !location.city.trim() || !location.state.trim()) {
+      toast.error("Please enter your complete business location.");
+      setStep(3);
+      return;
+    }
+
+    isSubmittingRef.current = true;
     setLoading(true);
     let claimResult: PromoClaimResult | null = null;
+
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password: aboutYou.password,
-        options: {
-          data: {
-            full_name: aboutYou.ownerName,
-            business_name: aboutYou.businessName,
-            owner_name: aboutYou.ownerName,
-            phone: aboutYou.phone,
-            address: location.address,
-            city: location.city,
-            state: location.state,
-            latitude: location.latitude,
-            longitude: location.longitude,
-            category,
-            business_hours: hours,
-            role: "provider",
+      // 1. Check if user is already authenticated (e.g. from resume flow)
+      const { data: { user: existingUser } } = await supabase.auth.getUser();
+      let authUserId = existingUser?.id;
+
+      if (!authUserId) {
+        // Sign up new user
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: email.trim(),
+          password: aboutYou.password,
+          options: {
+            data: {
+              full_name: aboutYou.ownerName.trim(),
+              business_name: aboutYou.businessName.trim(),
+              owner_name: aboutYou.ownerName.trim(),
+              phone: aboutYou.phone.trim(),
+              address: location.address.trim(),
+              city: location.city.trim(),
+              state: location.state.trim(),
+              latitude: location.latitude,
+              longitude: location.longitude,
+              category,
+              business_hours: hours,
+              role: "provider",
+            },
           },
-        },
-      });
-      if (error) throw error;
+        });
 
-      if (data.user) {
-        await supabase.from("profiles").upsert(
-          {
-            user_id: data.user.id,
-            email,
-            full_name: aboutYou.ownerName,
-            business_name: aboutYou.businessName,
-            owner_name: aboutYou.ownerName,
-            phone: aboutYou.phone,
-            address: location.address,
-            city: location.city,
-            state: location.state,
-            latitude: location.latitude,
-            longitude: location.longitude,
-            category: category || "general",
-            business_hours: hours,
-            role: "provider",
-            is_active: true,
-            social_links: { referral_source: referralSource },
-          } as any,
-          { onConflict: "user_id" }
-        );
-
-        // Fetch newly created profile id for service insertion
-        const { data: profileRow } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", data.user.id)
-          .single();
-
-        if (profileRow?.id) {
-          const lockedSvcs = services.filter((s) => s.isLocked);
-          const customSvcs = services.filter((s) => !s.isLocked);
-          const ordered = [...lockedSvcs, ...customSvcs];
-
-          const svcRows = await Promise.all(
-            ordered.map(async (svc, idx) => {
-              const imageUrls = svc.imageDataUrls?.length
-                ? await uploadDataUrls(data.user.id, svc.imageDataUrls)
-                : [];
-              return {
-                provider_id: profileRow.id,
-                user_id: data.user.id,
-                name: svc.name,
-                duration: svc.duration,
-                duration_minutes: parseDurationToMinutes(svc.duration),
-                price: svc.price,
-                description: JSON.stringify({
-                  pricingType: svc.pricingType,
-                  maxPrice: svc.maxPrice,
-                  isLocked: svc.isLocked,
-                  lockedKey: svc.lockedKey,
-                  emoji: svc.emoji,
-                  sortOrder: idx,
-                  imageUrls,
-                }),
-                category: category || "general",
-                is_active: true,
-                is_featured: svc.isLocked,
-              };
-            })
-          );
-
-          await supabase.from("services").insert(svcRows);
+        if (authError) {
+          if (authError.message.toLowerCase().includes("already registered")) {
+            toast.error("An account with this email already exists. Please sign in to resume setup.");
+            setStep(1);
+            return;
+          }
+          throw authError;
         }
 
-        // Attempt to claim a founding-business promo slot for this new
-        // profile. This is a best-effort add-on to registration: if it
-        // fails for any reason (network blip, campaign not seeded, etc.)
-        // the business account itself is already created and valid, so we
-        // swallow the error rather than failing the whole signup over a
-        // promo. Eligibility/limit enforcement happens server-side in
-        // claim_new_business_promo() — the popup below only renders when
-        // that function reports `eligible: true`.
-        if (profileRow?.id) {
-          try {
-            const { data: claimRows, error: claimError } = await supabase.rpc(
-              "claim_new_business_promo",
-              {
-                p_campaign_slug: FOUNDING_BUSINESS_PROMO_SLUG,
-                p_profile_id: profileRow.id,
-              }
-            );
-            if (claimError) throw claimError;
+        authUserId = authData.user?.id;
+      }
 
-            const claim = (Array.isArray(claimRows) ? claimRows[0] : claimRows) as
-              | PromoClaimResult
-              | undefined;
+      if (!authUserId) {
+        throw new Error("Unable to establish user account. Please try again.");
+      }
 
-            if (claim) {
-              claimResult = claim;
+      // 2. Prepare serialized service rows
+      const lockedSvcs = services.filter((s) => s.isLocked);
+      const customSvcs = services.filter((s) => !s.isLocked);
+      const ordered = [...lockedSvcs, ...customSvcs];
+
+      const serializedServices = ordered.map((svc, idx) => ({
+        name: svc.name.trim(),
+        duration: svc.duration,
+        duration_minutes: parseDurationToMinutes(svc.duration),
+        price: svc.price,
+        description: JSON.stringify({
+          pricingType: svc.pricingType,
+          maxPrice: svc.maxPrice,
+          isLocked: svc.isLocked,
+          lockedKey: svc.lockedKey,
+          emoji: svc.emoji,
+          sortOrder: idx,
+        }),
+        is_active: true,
+        is_featured: !!svc.isLocked,
+      }));
+
+      const idempotencyKey = `reg_${authUserId}_${Date.now()}`;
+
+      // 3. Execute transactional server-side provider onboarding RPC
+      const { data: rpcData, error: rpcError } = await supabase.rpc("complete_provider_onboarding", {
+        p_business_name: aboutYou.businessName.trim(),
+        p_owner_name: aboutYou.ownerName.trim(),
+        p_phone: aboutYou.phone.trim(),
+        p_category: category,
+        p_business_hours: hours,
+        p_address: location.address.trim(),
+        p_city: location.city.trim(),
+        p_state: location.state.trim(),
+        p_latitude: location.latitude ?? null,
+        p_longitude: location.longitude ?? null,
+        p_services: serializedServices,
+        p_referral_source: referralSource,
+        p_idempotency_key: idempotencyKey,
+      });
+
+      if (rpcError) throw rpcError;
+      if (!rpcData || !rpcData.success) {
+        throw new Error(rpcData?.message || "Failed to complete provider setup.");
+      }
+
+      const profileId = rpcData.profile_id;
+
+      // 4. Best-effort post-transaction service image uploads (non-blocking)
+      try {
+        const customWithImages = customSvcs.filter((s) => s.imageDataUrls?.length);
+        if (customWithImages.length > 0) {
+          for (const svc of customWithImages) {
+            const urls = await uploadDataUrls(authUserId, svc.imageDataUrls || []);
+            if (urls.length > 0) {
+              await supabase
+                .from("services")
+                .update({
+                  description: JSON.stringify({
+                    pricingType: svc.pricingType,
+                    maxPrice: svc.maxPrice,
+                    isLocked: svc.isLocked,
+                    lockedKey: svc.lockedKey,
+                    emoji: svc.emoji,
+                    imageUrls: urls,
+                  }),
+                })
+                .eq("provider_id", profileId)
+                .eq("name", svc.name.trim());
             }
-          } catch (promoErr) {
-            console.warn("Founding-business promo claim failed (non-fatal):", promoErr);
           }
+        }
+      } catch (imgErr) {
+        console.warn("Service image upload failed post-onboarding (non-fatal):", imgErr);
+      }
+
+      // 5. Claim founding-business promo slot (best effort, idempotent)
+      if (profileId) {
+        try {
+          const { data: claimRows, error: claimError } = await supabase.rpc(
+            "claim_new_business_promo",
+            {
+              p_campaign_slug: FOUNDING_BUSINESS_PROMO_SLUG,
+              p_profile_id: profileId,
+            }
+          );
+          if (!claimError && claimRows) {
+            const claim = (Array.isArray(claimRows) ? claimRows[0] : claimRows) as PromoClaimResult | undefined;
+            if (claim) claimResult = claim;
+          }
+        } catch (promoErr) {
+          console.warn("Founding-business promo claim failed (non-fatal):", promoErr);
         }
       }
 
-      // Registration succeeded. Only show the founding-business welcome
-      // popup if the backend actually granted a slot — businesses who
-      // register after the campaign limit is reached (or if the claim
-      // call failed/errored) go straight to the dashboard with no promo
-      // shown. `eligible` covers a fresh grant; `already_claimed` is the
-      // idempotent-retry case, which shouldn't normally happen on a brand
-      // new signup but is handled the same way regardless.
+      // 6. Navigation: show promo modal if granted slot, otherwise straight to dashboard
       if (claimResult?.eligible) {
         setPromoClaim(claimResult);
         setShowWelcomePromo(true);
       } else {
+        toast.success("Business profile created successfully!");
         navigate("/dashboard");
       }
     } catch (err: any) {
-      toast.error(err.message || "Registration failed");
+      console.error("Registration error:", err);
+      toast.error(err.message || "Registration failed. Please try again.");
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };
@@ -301,6 +397,10 @@ const Register = () => {
           <StepCategory
             selected={category}
             onSelect={(c) => {
+              if (categoryLocked) {
+                toast.info("Your business category is locked and cannot be changed.");
+                return;
+              }
               setCategory(c);
               setServices([]);
             }}
