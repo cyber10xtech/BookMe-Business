@@ -1,6 +1,6 @@
 import { App } from '@capacitor/app';
 import { Capacitor } from '@capacitor/core';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '../lib/supabase';
 
 export type UpdateStatus = 'up_to_date' | 'update_available' | 'update_required' | 'check_failed';
 
