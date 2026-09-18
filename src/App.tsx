@@ -27,6 +27,11 @@ const EditProfilePage = lazy(() => import("./pages/EditProfilePage"));
 const SubscriptionPage = lazy(() => import("./pages/SubscriptionPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
+const RecoveryEmail = lazy(() => import("./pages/RecoveryEmail"));
+const RecoveryOTP = lazy(() => import("./pages/RecoveryOTP"));
+const RecoveryNewPassword = lazy(() => import("./pages/RecoveryNewPassword"));
+const RecoverySuccess = lazy(() => import("./pages/RecoverySuccess"));
+
 const queryClient = new QueryClient();
 
 
@@ -115,6 +120,10 @@ const AppInner = () => {
       <Route path="/" element={<RootRedirect />} />
       <Route path="/signin" element={<SignIn />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/recover-password/email" element={<RecoveryEmail />} />
+      <Route path="/recover-password/otp" element={<RecoveryOTP />} />
+      <Route path="/recover-password/new" element={<RecoveryNewPassword />} />
+      <Route path="/recover-password/success" element={<RecoverySuccess />} />
       <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
       <Route path="/calendar" element={<AuthGuard><CalendarPage /></AuthGuard>} />
       <Route path="/home" element={<AuthGuard><HomePage /></AuthGuard>} />

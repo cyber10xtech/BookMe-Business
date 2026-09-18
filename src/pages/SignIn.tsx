@@ -45,21 +45,8 @@ const SignIn = () => {
 
   const handleContinue = () => { if (!email) return; setShowPass(true); };
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      toast.error("Please enter your email address first.");
-      return;
-    }
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success("Password reset instructions sent to your email.");
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Failed to send reset email");
-    }
+  const handleForgotPassword = () => {
+    navigate("/recover-password/email");
   };
 
   const handleSignIn = async () => {
@@ -143,6 +130,7 @@ const SignIn = () => {
           <input
             type="email"
             inputMode="email"
+            autoComplete="username"
             value={email}
             onChange={e => setEmail(e.target.value)}
             onKeyDown={e => e.key === "Enter" && (showPass ? handleSignIn() : handleContinue())}
@@ -164,6 +152,7 @@ const SignIn = () => {
             </div>
             <input
               type={showPasswordValue ? "text" : "password"}
+              autoComplete="current-password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleSignIn()}
@@ -179,15 +168,19 @@ const SignIn = () => {
               {showPasswordValue ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
             </button>
           </div>
-          <button
-            type="button"
-            className="text-xs text-primary font-semibold mt-2 ml-1 tap-scale"
-            onClick={handleForgotPassword}
-          >
-            Forgot password?
-          </button>
         </div>
       )}
+
+      {/* Forgot Password (Always visible) */}
+      <div className="text-right mb-6 mr-1 mt-2">
+        <button
+          type="button"
+          className="text-xs text-primary font-semibold tap-scale"
+          onClick={handleForgotPassword}
+        >
+          Forgot password?
+        </button>
+      </div>
 
       {/* ── Keep me signed in ── */}
       {showPass && (
